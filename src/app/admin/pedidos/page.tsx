@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ORDER_STATUS_META, ORDER_STATUS_ORDER } from '@/lib/constants';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useMounted } from '@/lib/hooks';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { Order, OrderStatus } from '@/lib/types';
 
 type StatusFilter = 'TODOS' | OrderStatus;
@@ -36,7 +37,16 @@ export default function AdminPedidosPage() {
   }, [orders, statusFilter, query]);
 
   if (!mounted) {
-    return <div className="p-10" />;
+    return (
+      <div className="p-10">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
   }
 
   const filteredRevenue = filtered.reduce((acc, order) => acc + order.total, 0);

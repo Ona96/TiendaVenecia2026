@@ -36,6 +36,9 @@ export function AdminShell({
 
   return (
     <div className="flex min-h-screen">
+      <a href="#contenido-admin" className="skip-link">
+        Saltar al contenido
+      </a>
       {/* Sidebar escritorio */}
       <aside className="hidden w-60 shrink-0 flex-col bg-charcoal text-ivory lg:flex">
         <div className="px-6 py-7">
@@ -44,11 +47,12 @@ export function AdminShell({
           </Link>
           <p className="mt-1 text-[9px] uppercase tracking-luxe text-gold">Panel del Atelier</p>
         </div>
-        <nav className="flex-1 space-y-1 px-3">
+        <nav aria-label="Navegación del atelier" className="flex-1 space-y-1 px-3">
           {ADMIN_NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive(item) ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-[0.18em] transition-colors',
                 isActive(item)
@@ -102,11 +106,15 @@ export function AdminShell({
               Boutique
             </Link>
           </div>
-          <nav className="flex gap-1 overflow-x-auto px-3 pb-3 no-scrollbar">
+          <nav
+            aria-label="Navegación del atelier"
+            className="flex gap-1 overflow-x-auto px-3 pb-3 no-scrollbar"
+          >
             {ADMIN_NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive(item) ? 'page' : undefined}
                 className={cn(
                   'flex shrink-0 items-center gap-2 px-4 py-2.5 text-[10px] uppercase tracking-[0.16em] transition-colors',
                   isActive(item)
@@ -121,7 +129,9 @@ export function AdminShell({
           </nav>
         </div>
 
-        <main className="flex-1 bg-ivory">{children}</main>
+        <main id="contenido-admin" tabIndex={-1} className="flex-1 bg-ivory">
+          {children}
+        </main>
       </div>
     </div>
   );

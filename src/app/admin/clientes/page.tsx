@@ -8,6 +8,7 @@ import { CustomerDetailModal } from '@/components/admin/CustomerDetailModal';
 import { measurementsSummary } from '@/components/store/MeasurementsForm';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useMounted } from '@/lib/hooks';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function AdminClientesPage() {
   const mounted = useMounted();
@@ -39,7 +40,15 @@ export default function AdminClientesPage() {
   }, [customers, orders, query]);
 
   if (!mounted) {
-    return <div className="p-10" />;
+    return (
+      <div className="p-10">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
   }
 
   return (

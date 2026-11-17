@@ -10,6 +10,7 @@ import { CUSTOM_SIZE, ORDER_STATUS_META, ORDER_STATUS_ORDER } from '@/lib/consta
 import { measurementsSummary } from '@/components/store/MeasurementsForm';
 import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
 import { useMounted } from '@/lib/hooks';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { Order } from '@/lib/types';
 
 function OrderTimeline({ order }: { order: Order }) {
@@ -62,7 +63,19 @@ export default function MisPedidosPage() {
   const orders = useOrdersStore((s) => s.orders);
 
   if (!mounted) {
-    return <div className="mx-auto max-w-4xl px-5 py-24 lg:px-10" />;
+    return (
+      <div className="mx-auto max-w-4xl px-5 py-24 lg:px-10">
+        <div className="mx-auto max-w-md space-y-3 text-center">
+          <Skeleton className="mx-auto h-3 w-24" />
+          <Skeleton className="mx-auto h-9 w-64" />
+          <Skeleton className="mx-auto h-4 w-80" />
+        </div>
+        <div className="mt-12 space-y-4">
+          <Skeleton className="h-36 w-full" />
+          <Skeleton className="h-36 w-full" />
+        </div>
+      </div>
+    );
   }
 
   if (!currentUser) {

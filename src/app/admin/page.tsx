@@ -17,6 +17,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ORDER_STATUS_META } from '@/lib/constants';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useMounted } from '@/lib/hooks';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { OrderStatus } from '@/lib/types';
 
 const WORKSHOP_STATUSES: OrderStatus[] = [
@@ -32,7 +33,15 @@ export default function AdminDashboardPage() {
   const products = useCatalogStore((s) => s.products);
 
   if (!mounted) {
-    return <div className="p-10" />;
+    return (
+      <div className="p-10">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
   }
 
   const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);

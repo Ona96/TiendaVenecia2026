@@ -14,6 +14,7 @@ import {
 } from '@/components/store/MeasurementsForm';
 import { formatDate } from '@/lib/utils';
 import { useMounted } from '@/lib/hooks';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { CustomMeasurements } from '@/lib/types';
 
 export default function PerfilPage() {
@@ -35,7 +36,18 @@ export default function PerfilPage() {
     measurements ?? customer?.savedMeasurements ?? EMPTY_MEASUREMENTS;
 
   if (!mounted) {
-    return <div className="mx-auto max-w-4xl px-5 py-24 lg:px-10" />;
+    return (
+      <div className="mx-auto max-w-4xl px-5 py-24 lg:px-10">
+        <div className="mx-auto max-w-md space-y-3 text-center">
+          <Skeleton className="mx-auto h-3 w-20" />
+          <Skeleton className="mx-auto h-9 w-56" />
+        </div>
+        <div className="mt-12 grid gap-8 md:grid-cols-2">
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
   }
 
   if (!currentUser) {

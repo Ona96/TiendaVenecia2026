@@ -8,6 +8,7 @@ import { ProductFormModal } from '@/components/admin/ProductFormModal';
 import { CATEGORY_LABEL } from '@/lib/constants';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useMounted } from '@/lib/hooks';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { Product } from '@/lib/types';
 
 export default function AdminPrendasPage() {
@@ -21,7 +22,16 @@ export default function AdminPrendasPage() {
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
 
   if (!mounted) {
-    return <div className="p-10" />;
+    return (
+      <div className="p-10">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
   }
 
   const sorted = [...products].sort(
