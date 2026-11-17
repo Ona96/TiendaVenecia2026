@@ -17,6 +17,19 @@ const config: Config = {
           dark: '#A9853F',
         },
         line: '#E8E4DC',
+        /* Colores semánticos de estado (Fase 2): tono atelier, no SaaS genérico. */
+        success: {
+          DEFAULT: '#4A6741',
+          soft: '#EEF2EC',
+        },
+        error: {
+          DEFAULT: '#9B3B3B',
+          soft: '#F7ECEC',
+        },
+        warn: {
+          DEFAULT: '#A67B2E',
+          soft: '#F7F1E4',
+        },
       },
       fontFamily: {
         display: ['var(--font-playfair)', 'Georgia', 'serif'],

@@ -23,18 +23,24 @@ const sizeClasses: Record<Size, string> = {
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
+  /** Estado de carga: bloquea el botón y lo anuncia a lectores de pantalla. */
+  isLoading?: boolean;
   children: ReactNode;
 }
 
 export function Button({
   variant = 'primary',
   size = 'md',
+  isLoading = false,
   className,
   children,
+  disabled,
   ...rest
 }: ButtonProps) {
   return (
     <button
+      aria-busy={isLoading || undefined}
+      disabled={disabled || isLoading}
       className={cn(
         'inline-flex items-center justify-center gap-2 uppercase tracking-[0.22em] font-medium',
         'transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
@@ -44,6 +50,12 @@ export function Button({
       )}
       {...rest}
     >
+      {isLoading && (
+        <span
+          aria-hidden
+          className="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent"
+        />
+      )}
       {children}
     </button>
   );

@@ -10,9 +10,14 @@ export default function StoreLayout({
 }>) {
   return (
     <div className="flex min-h-screen flex-col">
+      <a href="#contenido" className="skip-link">
+        Saltar al contenido
+      </a>
       <TopBar />
       <Header />
-      <main className="flex-1">{children}</main>
+      <main id="contenido" className="flex-1" tabIndex={-1}>
+        {children}
+      </main>
       <Footer />
       <CartDrawer />
     </div>

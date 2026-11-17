@@ -30,6 +30,29 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #c5a059aa;
   }
+
+  /**
+   * Foco visible de teclado: anillo oro, consistente en toda la app.
+   * Se aplica a navegación, formularios, tarjetas y botones.
+   */
+  :focus-visible {
+    outline: 2px solid theme('colors.gold.DEFAULT');
+    outline-offset: 2px;
+  }
+
+  /* Movimiento reducido: respeta la preferencia del sistema. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {
@@ -44,6 +67,19 @@
   .label {
     @apply mb-1.5 block text-[11px] font-medium uppercase tracking-[0.18em] text-stone-500;
   }
+
+  /**
+   * Mensaje de error de formulario: anuncia al lector de pantallas,
+   * tiene rol explícito y color de estado (no solo color, incluye texto).
+   */
+  .form-error {
+    @apply mt-2 flex items-start gap-2 text-xs text-error;
+  }
+
+  /* Enlace de salto de contenido: oculto, visible al enfocar con Tab. */
+  .skip-link {
+    @apply fixed left-4 top-4 z-[100] -translate-y-24 bg-charcoal px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-ivory transition-transform focus:translate-y-0;
+  }
 }
 
 @layer utilities {
@@ -53,5 +89,32 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /**
+   * Esqueleto de carga: shimmer sutil, sin saltos de layout
+   * (se usa con las mismas dimensiones del contenido final).
+   */
+  .skeleton {
+    @apply relative overflow-hidden bg-stone-200/70;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.55) 50%,
+      transparent 100%
+    );
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  }
+  @keyframes skeleton-shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
   }
 }
