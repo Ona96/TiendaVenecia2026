@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, LogIn, LogOut, Package, UserRound } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
+import { useMounted } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 
 export function AccountMenu() {
@@ -12,10 +13,8 @@ export function AccountMenu() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

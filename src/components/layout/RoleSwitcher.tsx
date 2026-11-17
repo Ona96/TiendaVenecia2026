@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, UserCog } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
+import { useMounted } from '@/lib/hooks';
 import { ROLE_LABEL } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/lib/types';
@@ -14,10 +15,8 @@ export function RoleSwitcher() {
   const loginAs = useAuthStore((s) => s.loginAs);
   const logout = useAuthStore((s) => s.logout);
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

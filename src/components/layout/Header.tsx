@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Menu, ShoppingBag, X } from 'lucide-react';
 import { AccountMenu } from './AccountMenu';
 import { useCartStore, selectCartCount } from '@/store/cart-store';
+import { useMounted } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 
 const NAV_LINKS = [
@@ -17,10 +18,8 @@ export function Header() {
   const items = useCartStore((s) => s.items);
   const count = selectCartCount(items);
   const openCart = useCartStore((s) => s.openCart);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ivory/90 backdrop-blur">

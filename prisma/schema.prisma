@@ -1,0 +1,522 @@
+// ============================================================
+// Venecia — Esquema de dominio (Prisma + PostgreSQL/Supabase)
+// ------------------------------------------------------------
+// Convenciones clave:
+// - DINERO: siempre centavos enteros (Int). Jamás float.
+// - SNAPSHOTS: las órdenes congelan precios, dirección y medidas
+//   al momento de la compra; cambios posteriores del perfil no
+//   alteran el historial comercial.
+// - ARCHIVO: entidades con historial comercial se archivan
+//   (status ARCHIVADO / guestToken revocado), no se borran.
+// - DEMO: los campos isDemo marcan datos de prueba, fáciles de
+//   limpiar (ver prisma/seed-clean.ts).
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------- Enums ----------------
+
+enum Role {
+  CLIENTE
+  ADMIN
+}
+
+enum ProductStatus {
+  PUBLICADO
+  PAUSADO
+  ARCHIVADO
+}
+
+enum OrderStatus {
+  PENDIENTE_CONFIRMACION
+  CONFIRMADO
+  EN_CONFECCION
+  CONTROL_CALIDAD
+  ENVIADO
+  ENTREGADO
+  CANCELADO
+}
+
+enum PaymentMethod {
+  TRANSFERENCIA
+  MERCADO_PAGO
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  PENDIENTE_VERIFICACION
+  VERIFICADO
+  RECHAZADO
+  REEMBOLSADO
+}
+
+enum ShippingMethod {
+  RETIRO
+  ENVIO
+}
+
+enum ShippingStatus {
+  NO_APLICA
+  A_COTIZAR
+  COTIZADO
+  EN_CAMINO
+  ENTREGADO
+}
+
+enum ReservationStatus {
+  ACTIVA
+  LIBERADA
+  CONSUMIDA
+}
+
+enum QuoteStatus {
+  ENVIADA
+  ACLARACION_PENDIENTE
+  ACEPTADA
+  RECHAZADA
+  EXPIRADA
+  CONVERTIDA
+}
+
+enum QuoteAcceptance {
+  WEB
+  WHATSAPP
+}
+
+enum ReviewStatus {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+}
+
+enum InquiryStatus {
+  NUEVA
+  RESPONDIDA
+  CERRADA
+}
+
+enum PromotionType {
+  PORCENTAJE
+  MONTO
+}
+
+// ---------------- Identidad ----------------
+
+/// Espejo de auth.users (Supabase). El id coincide 1:1.
+model Profile {
+  id        String   @id
+  role      Role     @default(CLIENTE)
+  name      String
+  phone     String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses   Address[]
+  orders      Order[]
+  favorites   Favorite[]
+  reviews     Review[]
+  measurements MeasurementVersion[]
+  quotes      Quote[]
+
+  @@map("profiles")
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  profileId  String
+  label      String
+  name       String
+  phone      String
+  street     String
+  city       String
+  province   String
+  postalCode String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
+}
+
+/// Historial append-only de medidas. La versión vigente es la última.
+model MeasurementVersion {
+  id        String   @id @default(cuid())
+  profileId String
+  busto     Int
+  cintura   Int
+  cadera    Int
+  largo     Int
+  source    String   @default("WEB")
+  at        DateTime @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("measurement_versions")
+}
+
+// ---------------- Catálogo ----------------
+
+model Category {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  sortOrder Int      @default(0)
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  featured    Boolean  @default(false)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  products ProductCollection[]
+
+  @@map("collections")
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  name           String
+  description    String
+  priceCents     Int
+  status         ProductStatus @default(PUBLICADO)
+  featured       Boolean       @default(false)
+  categoryId     String
+  fabrics        String[]
+  occasions      String[]
+  productionHours Int          @default(60)
+  /// Permite venta directa online (false = solo consulta/presupuesto).
+  sellable        Boolean      @default(true)
+  /// Permite confección a medida en la ficha.
+  madeToMeasure   Boolean      @default(true)
+  /// Se confecciona por encargo (sin stock físico obligatorio).
+  madeToOrder     Boolean      @default(false)
+  leadTimeDays    Int          @default(21)
+  isDemo          Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  category    Category           @relation(fields: [categoryId], references: [id])
+  images      ProductImage[]
+  variants    ProductVariant[]
+  promotions  PromotionProduct[]
+  collections ProductCollection[]
+  reviews     Review[]
+  favorites   Favorite[]
+
+  @@map("products")
+}
+
+model ProductImage {
+  id        String @id @default(cuid())
+  productId String
+  url       String
+  alt       String?
+  position  Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, position])
+  @@map("product_images")
+}
+
+/// Stock físico por talle. madeToOrder usa cupos (stock puede ser 0).
+model ProductVariant {
+  id        String @id @default(cuid())
+  productId String
+  size      String
+  stock     Int    @default(0)
+
+  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([productId, size])
+  @@map("product_variants")
+}
+
+model Promotion {
+  id        String        @id @default(cuid())
+  name      String
+  type      PromotionType
+  /// PORCENTAJE: entero 1–100. MONTO: centavos.
+  value     Int
+  startsAt  DateTime
+  endsAt    DateTime?
+  active    Boolean       @default(true)
+  isDemo    Boolean       @default(false)
+
+  products PromotionProduct[]
+
+  @@map("promotions")
+}
+
+model PromotionProduct {
+  promotionId String
+  productId   String
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([promotionId, productId])
+  @@map("promotion_products")
+}
+
+model ProductCollection {
+  productId    String
+  collectionId String
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, collectionId])
+  @@map("product_collections")
+}
+
+// ---------------- Pedidos, pagos y stock ----------------
+
+model Order {
+  id             String         @id @default(cuid())
+  /// Código público TV-2026-0001.
+  code           String         @unique
+  /// Null = compra de invitada. guestToken da acceso privado revocable.
+  profileId      String?
+  guestToken     String?        @unique
+  email          String
+  status         OrderStatus    @default(PENDIENTE_CONFIRMACION)
+  paymentStatus  PaymentStatus  @default(PENDIENTE)
+  shippingMethod ShippingMethod
+  shippingStatus ShippingStatus @default(NO_APLICA)
+
+  // Snapshots inmutables de la compra
+  subtotalCents  Int
+  discountCents  Int            @default(0)
+  shippingCents  Int            @default(0)
+  totalCents     Int
+  shipName       String
+  shipPhone      String
+  shipStreet     String
+  shipCity       String
+  shipProvince   String
+  shipPostal     String?
+  workshopNotes  String?
+
+  estimatedDelivery DateTime?
+  isDemo            Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  profile    Profile?             @relation(fields: [profileId], references: [id])
+  items      OrderItem[]
+  payments   Payment[]
+  history    OrderStatusHistory[]
+  reservations Reservation[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  /// Null si el producto se archivó: el snapshot sobrevive.
+  productId      String?
+  nameSnapshot   String
+  imageSnapshot  String?
+  size           String
+  madeToMeasure  Boolean @default(false)
+  busto          Int?
+  cintura        Int?
+  cadera         Int?
+  largo          Int?
+  quantity       Int
+  unitPriceCents Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// Historial auditable de estados comerciales (quién, cuándo, qué).
+model OrderStatusHistory {
+  id           String       @id @default(cuid())
+  orderId      String
+  from         OrderStatus?
+  to           OrderStatus
+  at           DateTime     @default(now())
+  byProfileId  String?
+  note         String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+/// Cobros. Separados del estado de la orden.
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  method            PaymentMethod
+  status            PaymentStatus @default(PENDIENTE)
+  amountCents       Int
+  currency          String        @default("ARS")
+  /// Idempotencia MP: un mismo payment_id nunca se procesa dos veces.
+  mpPaymentId       String?       @unique
+  evidenceUrl       String?
+  /// Fecha en que la clienta declaró la transferencia.
+  declaredAt        DateTime?
+  /// Fecha en que el admin verificó el banco.
+  verifiedAt        DateTime?
+  verifiedByProfile String?
+  note              String?
+  isDemo            Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+/// Reserva temporal de stock. Expira y libera automáticamente.
+model Reservation {
+  id         String           @id @default(cuid())
+  variantId  String
+  orderId    String?
+  quantity   Int
+  status     ReservationStatus @default(ACTIVA)
+  expiresAt  DateTime
+  createdAt  DateTime         @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  order   Order?         @relation(fields: [orderId], references: [id])
+
+  @@index([variantId, status])
+  @@index([expiresAt])
+  @@map("reservations")
+}
+
+// ---------------- Presupuestos (confección especial) ----------------
+
+model Quote {
+  id        String      @id @default(cuid())
+  code      String      @unique
+  profileId String?
+  email     String
+  name      String
+  phone     String?
+  status    QuoteStatus @default(ENVIADA)
+  isDemo    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  profile  Profile?       @relation(fields: [profileId], references: [id])
+  versions QuoteVersion[]
+
+  @@map("quotes")
+}
+
+/// Cada versión es inmutable; la vigente es la de mayor version.
+model QuoteVersion {
+  id                   String          @id @default(cuid())
+  quoteId              String
+  version              Int
+  itemsJson            Json
+  subtotalCents        Int
+  notes                String?
+  validUntil           DateTime?
+  /// Aceptación web registrada automáticamente.
+  acceptedViaWebAt     DateTime?
+  /// Aceptación por WhatsApp: registrada manualmente por el admin.
+  whatsappDeclaredAt   DateTime?
+  /// Fecha que la clienta declaró por WhatsApp (puede diferir).
+  whatsappDeclaredDate DateTime?
+  acceptanceMethod     QuoteAcceptance?
+  evidenceUrl          String?
+  convertedOrderId     String?
+  createdAt            DateTime        @default(now())
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, version])
+  @@map("quote_versions")
+}
+
+// ---------------- Comunidad y contenido ----------------
+
+/// Solo compradoras verificadas (orderId). Moderación explícita.
+model Review {
+  id        String       @id @default(cuid())
+  productId String
+  profileId String?
+  orderId   String?
+  rating    Int
+  text      String
+  photoUrl  String?
+  status    ReviewStatus @default(PENDIENTE)
+  isDemo    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  profile Profile? @relation(fields: [profileId], references: [id])
+
+  @@index([productId, status])
+  @@map("reviews")
+}
+
+model Favorite {
+  profileId String
+  productId String
+  createdAt DateTime @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, productId])
+  @@map("favorites")
+}
+
+model Inquiry {
+  id        String        @id @default(cuid())
+  profileId String?
+  email     String
+  name      String
+  productId String?
+  message   String
+  status    InquiryStatus @default(NUEVA)
+  response  String?
+  isDemo    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+
+  @@map("inquiries")
+}
+
+/// CMS limitado: banners, textos fijos, contacto, umbrales.
+model CmsContent {
+  key       String   @id
+  value     Json
+  isDemo    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("cms_content")
+}

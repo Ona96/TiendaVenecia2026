@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Check, LogIn, Package, Ruler } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import {
@@ -27,16 +27,12 @@ export default function PerfilPage() {
     ? customers.find((c) => c.email.toLowerCase() === currentUser.email.toLowerCase())
     : undefined;
 
-  const [measurements, setMeasurements] = useState<CustomMeasurements>(
-    customer?.savedMeasurements ?? EMPTY_MEASUREMENTS,
-  );
+  const [measurements, setMeasurements] = useState<CustomMeasurements | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    if (customer?.savedMeasurements) {
-      setMeasurements(customer.savedMeasurements);
-    }
-  }, [customer?.savedMeasurements]);
+  // Overlay de ediciones: null = mostrar las medidas guardadas, sin efectos.
+  const effectiveMeasurements: CustomMeasurements =
+    measurements ?? customer?.savedMeasurements ?? EMPTY_MEASUREMENTS;
 
   if (!mounted) {
     return <div className="mx-auto max-w-4xl px-5 py-24 lg:px-10" />;
@@ -64,7 +60,7 @@ export default function PerfilPage() {
     event.preventDefault();
     if (!currentUser) return;
     if (customer) {
-      saveMeasurements(customer.id, measurements);
+      saveMeasurements(customer.id, effectiveMeasurements);
     } else {
       upsertCustomer({
         name: currentUser.name,
@@ -72,7 +68,7 @@ export default function PerfilPage() {
         phone: '',
         city: '',
         notes: '',
-        savedMeasurements: measurements,
+        savedMeasurements: effectiveMeasurements,
       });
     }
     setSaved(true);
@@ -139,7 +135,10 @@ export default function PerfilPage() {
             </p>
           )}
           <div className="mt-5">
-            <MeasurementsForm value={measurements} onChange={setMeasurements} />
+            <MeasurementsForm
+              value={effectiveMeasurements}
+              onChange={(m) => setMeasurements(m)}
+            />
           </div>
           <button
             type="submit"

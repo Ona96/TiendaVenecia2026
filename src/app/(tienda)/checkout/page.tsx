@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, CheckCircle2, PackageCheck, Scissors } from 'lucide-react';
 import { useCartStore, selectCartSubtotal } from '@/store/cart-store';
 import { useAuthStore } from '@/store/auth-store';
@@ -39,15 +39,10 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
 
-  // Precarga los datos de la clienta logueada (el store se hidrata en el cliente).
-  useEffect(() => {
-    if (!currentUser) return;
-    setForm((prev) => ({
-      ...prev,
-      name: currentUser.name,
-      email: currentUser.email,
-    }));
-  }, [currentUser]);
+  // Autocompletado derivado en render: si la clienta no escribió nada,
+  // se muestran los datos de su cuenta (store hidratado), sin efectos.
+  const name = form.name || currentUser?.name || '';
+  const email = form.email || currentUser?.email || '';
 
   const subtotal = selectCartSubtotal(items);
   const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
@@ -62,7 +57,7 @@ export default function CheckoutPage() {
     event.preventDefault();
     if (items.length === 0) return;
 
-    const email = form.email.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Ingresá un email válido para avisarte del avance del vestido.');
       return;
@@ -73,8 +68,8 @@ export default function CheckoutPage() {
     }
 
     const customer = upsertCustomer({
-      name: form.name.trim(),
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       phone: form.phone.trim(),
       city: form.province,
       notes: '',
@@ -82,8 +77,8 @@ export default function CheckoutPage() {
 
     const order = createOrder({
       customerId: customer.id,
-      customerName: form.name.trim(),
-      customerEmail: email,
+      customerName: name.trim(),
+      customerEmail: normalizedEmail,
       items: items.map((item) => ({
         productId: item.productId,
         name: item.name,
@@ -212,7 +207,7 @@ export default function CheckoutPage() {
                 id="name"
                 required
                 className="field"
-                value={form.name}
+                value={name}
                 onChange={(e) => updateField('name', e.target.value)}
                 placeholder="Valentina López"
               />
@@ -224,7 +219,7 @@ export default function CheckoutPage() {
                 type="email"
                 required
                 className="field"
-                value={form.email}
+                value={email}
                 onChange={(e) => updateField('email', e.target.value)}
                 placeholder="tu@email.com"
               />

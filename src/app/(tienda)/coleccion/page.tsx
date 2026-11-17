@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { useCatalogStore, selectPublishedProducts } from '@/store/catalog-store';
 import { ProductCard } from '@/components/store/ProductCard';
@@ -32,19 +32,18 @@ export default function ColeccionPage() {
   const [fabrics, setFabrics] = useState<string[]>([]);
   const [occasions, setOccasions] = useState<string[]>([]);
   const [onlyInStock, setOnlyInStock] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(1000000);
-  const [priceCeiling, setPriceCeiling] = useState(1000000);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('relevancia');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [quickView, setQuickView] = useState<Product | null>(null);
 
-  useEffect(() => {
-    if (published.length === 0) return;
-    const highest = Math.max(...published.map((p) => p.price));
-    setPriceCeiling(Math.ceil(highest / 10000) * 10000);
-    setMaxPrice(Math.ceil(highest / 10000) * 10000);
+  // Techo de precio derivado del catálogo: null = "sin límite custom".
+  const priceCeiling = useMemo(() => {
+    if (published.length === 0) return 1000000;
+    return Math.ceil(Math.max(...published.map((p) => p.price)) / 10000) * 10000;
   }, [published]);
+  const [maxPriceOverride, setMaxPriceOverride] = useState<number | null>(null);
+  const maxPrice = maxPriceOverride ?? priceCeiling;
 
   function toggleIn<T>(list: T[], value: T, setList: (next: T[]) => void) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -86,7 +85,7 @@ export default function ColeccionPage() {
     setFabrics([]);
     setOccasions([]);
     setOnlyInStock(false);
-    setMaxPrice(priceCeiling);
+    setMaxPriceOverride(null);
     setQuery('');
   }
 
@@ -96,7 +95,7 @@ export default function ColeccionPage() {
     fabrics.length +
     occasions.length +
     (onlyInStock ? 1 : 0) +
-    (maxPrice < priceCeiling ? 1 : 0) +
+    (maxPriceOverride !== null ? 1 : 0) +
     (query ? 1 : 0);
 
   const filterPanel = (
@@ -200,7 +199,7 @@ export default function ColeccionPage() {
           max={priceCeiling}
           step={10000}
           value={maxPrice}
-          onChange={(e) => setMaxPrice(Number(e.target.value))}
+          onChange={(e) => setMaxPriceOverride(Number(e.target.value))}
           className="w-full accent-[#C5A059]"
         />
       </div>
