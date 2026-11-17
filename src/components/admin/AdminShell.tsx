@@ -11,6 +11,8 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/env';
 import { cn } from '@/lib/utils';
 
 const ADMIN_NAV = [
@@ -79,6 +81,7 @@ export function AdminShell({
           </Link>
           <button
             onClick={() => {
+              if (isSupabaseConfigured()) void createSupabaseBrowserClient()?.auth.signOut();
               logout();
               router.push('/');
               router.refresh();

@@ -23,6 +23,11 @@ interface AuthState {
   /** Cambio rápido de rol para demo: inicia sesión como el primer usuario de ese rol. */
   loginAs: (role: Role) => void;
   logout: () => void;
+  /**
+   * Fase 3a: puente con Supabase. La sesión real (proxy.ts) es la fuente
+   * de verdad; este store refleja identidad y rol, no los decide.
+   */
+  setSessionUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -50,6 +55,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => set({ currentUser: null }),
+      setSessionUser: (user) => set({ currentUser: user }),
     }),
     {
       name: 'venecia-auth',

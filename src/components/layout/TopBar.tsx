@@ -1,7 +1,5 @@
 'use client';
 
-import { RoleSwitcher } from './RoleSwitcher';
-
 export function TopBar() {
   return (
     <div className="bg-charcoal">
@@ -9,7 +7,6 @@ export function TopBar() {
         <p className="truncate text-[10px] uppercase tracking-[0.2em] text-ivory/60">
           Confección a medida · Envíos a todo el país · Turnos en el atelier
         </p>
-        <RoleSwitcher />
       </div>
     </div>
   );

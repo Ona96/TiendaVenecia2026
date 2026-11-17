@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, LogIn, LogOut, Package, UserRound } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useMounted } from '@/lib/hooks';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/env';
 import { cn } from '@/lib/utils';
 
 export function AccountMenu() {
@@ -88,6 +90,9 @@ export function AccountMenu() {
           <div className="border-t border-line" />
           <button
             onClick={() => {
+              // Corta la sesión real (proxy.ts la lee de cookies) y el puente
+              // limpia el store vía onAuthStateChange.
+              if (isSupabaseConfigured()) void createSupabaseBrowserClient()?.auth.signOut();
               logout();
               setOpen(false);
               router.push('/');
