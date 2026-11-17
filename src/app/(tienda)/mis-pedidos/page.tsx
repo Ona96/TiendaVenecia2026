@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import Link from 'next/link';
 import { LogIn, Scissors } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
@@ -131,10 +131,10 @@ export default function MisPedidosPage() {
                     {order.items.map((item, index) => (
                       <li key={`${order.id}-item-${index}`} className="flex gap-4">
                         <div className="relative h-24 w-18 shrink-0 overflow-hidden bg-line" style={{ width: 72 }}>
-                          <Image
+                          <ProductImage
                             src={item.image}
                             alt={item.name}
-                            fill
+                            fallbackLabel={item.name}
                             sizes="72px"
                             className="object-cover"
                           />

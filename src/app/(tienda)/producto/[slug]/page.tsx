@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
@@ -116,10 +116,10 @@ export default function ProductoPage() {
         {/* Galería */}
         <div>
           <div className="relative aspect-[3/4] overflow-hidden bg-line">
-            <Image
+            <ProductImage
               src={product.images[activeImage]}
               alt={product.name}
-              fill
+              fallbackLabel={product.name}
               priority
               sizes="(min-width: 1024px) 50vw, 100vw"
               className="object-cover"
@@ -140,7 +140,13 @@ export default function ProductoPage() {
                   activeImage === index ? 'border-gold' : 'border-transparent opacity-70 hover:opacity-100',
                 )}
               >
-                <Image src={image} alt={`${product.name} ${index + 1}`} fill sizes="20vw" className="object-cover" />
+                <ProductImage
+                  src={image}
+                  alt={`${product.name} ${index + 1}`}
+                  fallbackLabel={`${index + 1}`}
+                  sizes="20vw"
+                  className="object-cover"
+                />
               </button>
             ))}
           </div>

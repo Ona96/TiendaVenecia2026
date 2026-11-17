@@ -6,7 +6,6 @@
 
 import type { Customer, Order, Product, User } from '@/lib/types';
 
-const img = (seed: string) => `https://picsum.photos/seed/${seed}/900/1200`;
 
 export const seedUsers: User[] = [
   {
@@ -108,7 +107,7 @@ export const seedProducts: Product[] = [
     sizes: ['XS', 'S', 'M', 'L'],
     stock: 4,
     productionHours: 120,
-    images: [img('venecia-aurelia-1'), img('venecia-aurelia-2'), img('venecia-aurelia-3')],
+    images: ["/images/products/vestido-aurelia-1.jpg", "/images/products/vestido-aurelia-2.jpg", "/images/products/vestido-aurelia-3.jpg"],
     featured: true,
     status: 'PUBLICADO',
     createdAt: '2025-02-10T09:00:00.000Z',
@@ -126,7 +125,7 @@ export const seedProducts: Product[] = [
     sizes: ['XS', 'S', 'M', 'L', 'XL'],
     stock: 6,
     productionHours: 70,
-    images: [img('venecia-serena-1'), img('venecia-serena-2'), img('venecia-serena-3')],
+    images: ["/images/products/vestido-serena-1.jpg", "/images/products/vestido-serena-2.jpg", "/images/products/vestido-serena-3.jpg"],
     featured: true,
     status: 'PUBLICADO',
     createdAt: '2025-02-24T09:00:00.000Z',
@@ -144,7 +143,7 @@ export const seedProducts: Product[] = [
     sizes: ['S', 'M', 'L'],
     stock: 3,
     productionHours: 95,
-    images: [img('venecia-isabella-1'), img('venecia-isabella-2'), img('venecia-isabella-3')],
+    images: ["/images/products/vestido-isabella-1.jpg", "/images/products/vestido-isabella-2.jpg", "/images/products/vestido-isabella-3.jpg"],
     featured: true,
     status: 'PUBLICADO',
     createdAt: '2025-03-05T09:00:00.000Z',
@@ -162,7 +161,7 @@ export const seedProducts: Product[] = [
     sizes: ['XS', 'S', 'M'],
     stock: 8,
     productionHours: 45,
-    images: [img('venecia-valentina-1'), img('venecia-valentina-2'), img('venecia-valentina-3')],
+    images: ["/images/products/vestido-valentina-1.jpg", "/images/products/vestido-valentina-2.jpg", "/images/products/vestido-valentina-3.jpg"],
     featured: false,
     status: 'PUBLICADO',
     createdAt: '2025-03-19T09:00:00.000Z',
@@ -180,7 +179,7 @@ export const seedProducts: Product[] = [
     sizes: ['XS', 'S', 'M', 'L', 'XL'],
     stock: 5,
     productionHours: 55,
-    images: [img('venecia-camille-1'), img('venecia-camille-2'), img('venecia-camille-3')],
+    images: ["/images/products/vestido-camille-1.jpg", "/images/products/vestido-camille-2.jpg", "/images/products/vestido-camille-3.jpg"],
     featured: false,
     status: 'PUBLICADO',
     createdAt: '2025-04-08T09:00:00.000Z',
@@ -198,7 +197,7 @@ export const seedProducts: Product[] = [
     sizes: ['S', 'M', 'L'],
     stock: 4,
     productionHours: 110,
-    images: [img('venecia-bianca-1'), img('venecia-bianca-2'), img('venecia-bianca-3')],
+    images: ["/images/products/vestido-bianca-1.jpg", "/images/products/vestido-bianca-2.jpg", "/images/products/vestido-bianca-3.jpg"],
     featured: false,
     status: 'PUBLICADO',
     createdAt: '2025-05-02T09:00:00.000Z',
@@ -216,7 +215,7 @@ export const seedProducts: Product[] = [
     sizes: ['XS', 'S', 'M', 'L'],
     stock: 2,
     productionHours: 80,
-    images: [img('venecia-donatella-1'), img('venecia-donatella-2'), img('venecia-donatella-3')],
+    images: ["/images/products/vestido-donatella-1.jpg", "/images/products/vestido-donatella-2.jpg", "/images/products/vestido-donatella-3.jpg"],
     featured: true,
     status: 'PUBLICADO',
     createdAt: '2025-06-14T09:00:00.000Z',
@@ -234,7 +233,7 @@ export const seedProducts: Product[] = [
     sizes: ['XS', 'S', 'M', 'L', 'XL'],
     stock: 7,
     productionHours: 60,
-    images: [img('venecia-luciana-1'), img('venecia-luciana-2'), img('venecia-luciana-3')],
+    images: ["/images/products/vestido-luciana-1.jpg", "/images/products/vestido-luciana-2.jpg", "/images/products/vestido-luciana-3.jpg"],
     featured: false,
     status: 'PAUSADO',
     createdAt: '2025-07-01T09:00:00.000Z',
@@ -252,7 +251,7 @@ export const seedOrders: Order[] = [
       {
         productId: 'p1',
         name: 'Vestido Aurelia',
-        image: img('venecia-aurelia-1'),
+        image: "/images/products/vestido-aurelia-1.jpg",
         price: 890000,
         size: 'A_MEDIDA',
         quantity: 1,
@@ -282,7 +281,7 @@ export const seedOrders: Order[] = [
       {
         productId: 'p3',
         name: 'Vestido Isabella',
-        image: img('venecia-isabella-1'),
+        image: "/images/products/vestido-isabella-1.jpg",
         price: 720000,
         size: 'M',
         quantity: 1,
@@ -312,7 +311,7 @@ export const seedOrders: Order[] = [
       {
         productId: 'p6',
         name: 'Vestido Bianca',
-        image: img('venecia-bianca-1'),
+        image: "/images/products/vestido-bianca-1.jpg",
         price: 640000,
         size: 'A_MEDIDA',
         quantity: 1,
@@ -339,7 +338,7 @@ export const seedOrders: Order[] = [
       {
         productId: 'p5',
         name: 'Vestido Camille',
-        image: img('venecia-camille-1'),
+        image: "/images/products/vestido-camille-1.jpg",
         price: 385000,
         size: 'S',
         quantity: 1,
@@ -371,7 +370,7 @@ export const seedOrders: Order[] = [
       {
         productId: 'p2',
         name: 'Vestido Serena',
-        image: img('venecia-serena-1'),
+        image: "/images/products/vestido-serena-1.jpg",
         price: 465000,
         size: 'S',
         quantity: 1,
@@ -379,7 +378,7 @@ export const seedOrders: Order[] = [
       {
         productId: 'p4',
         name: 'Vestido Valentina',
-        image: img('venecia-valentina-1'),
+        image: "/images/products/vestido-valentina-1.jpg",
         price: 298000,
         size: 'S',
         quantity: 1,

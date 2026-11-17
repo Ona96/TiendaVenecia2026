@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { useState } from 'react';
 import { Pencil, Play, Plus, Pause, Trash2 } from 'lucide-react';
 import { useCatalogStore } from '@/store/catalog-store';
@@ -75,10 +75,10 @@ export default function AdminPrendasPage() {
             )}
           >
             <div className="relative aspect-[16/10] overflow-hidden bg-line">
-              <Image
+              <ProductImage
                 src={product.images[0]}
                 alt={product.name}
-                fill
+                fallbackLabel={product.name}
                 sizes="(min-width: 1280px) 30vw, (min-width: 640px) 50vw, 100vw"
                 className="object-cover"
               />

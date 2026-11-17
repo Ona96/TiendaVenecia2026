@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingBag, Trash2, Truck, X } from 'lucide-react';
@@ -103,7 +103,7 @@ export function CartDrawer() {
                 {items.map((item) => (
                   <li key={item.key} className="flex gap-4 border-b border-line pb-5 last:border-0">
                     <div className="relative h-28 w-20 shrink-0 overflow-hidden bg-line">
-                      <Image src={item.image} alt={item.name} fill sizes="80px" className="object-cover" />
+                      <ProductImage src={item.image} alt={item.name} fallbackLabel={item.name} sizes="80px" className="object-cover" />
                     </div>
                     <div className="flex flex-1 flex-col">
                       <div className="flex items-start justify-between gap-2">

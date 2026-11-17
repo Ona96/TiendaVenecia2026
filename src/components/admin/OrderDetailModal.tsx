@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { X } from 'lucide-react';
 import { useOrdersStore } from '@/store/orders-store';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -95,7 +95,7 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
               {order.items.map((item, index) => (
                 <li key={`${order.id}-detail-${index}`} className="flex gap-4 p-4">
                   <div className="relative h-24 w-18 shrink-0 overflow-hidden bg-line" style={{ width: 72 }}>
-                    <Image src={item.image} alt={item.name} fill sizes="72px" className="object-cover" />
+                    <ProductImage src={item.image} alt={item.name} fallbackLabel={item.name} sizes="72px" className="object-cover" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-charcoal">{item.name}</p>

@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Minus, Plus, Scissors, Trash2 } from 'lucide-react';
@@ -72,7 +72,7 @@ export default function CarritoPage() {
                   href={`/producto/${item.productId}`}
                   className="relative h-36 w-28 shrink-0 overflow-hidden bg-line"
                 >
-                  <Image src={item.image} alt={item.name} fill sizes="112px" className="object-cover" />
+                  <ProductImage src={item.image} alt={item.name} fallbackLabel={item.name} sizes="112px" className="object-cover" />
                 </Link>
                 <div className="flex flex-1 flex-col">
                   <div className="flex items-start justify-between gap-3">

@@ -40,20 +40,25 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-charcoal">
       {/* Panel visual */}
-      <div className="relative hidden w-1/2 overflow-hidden lg:block">
+      <div className="relative hidden w-1/2 overflow-hidden bg-charcoal lg:block">
         <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: 'url(https://picsum.photos/seed/venecia-login/1200/1600)' }}
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 70% 55% at 65% 25%, rgba(197, 160, 89, 0.18), transparent 60%), radial-gradient(ellipse 50% 40% at 25% 85%, rgba(197, 160, 89, 0.10), transparent 55%), linear-gradient(165deg, #1a1a1a 0%, #211e18 55%, #2b2418 100%)',
+          }}
         />
-        <div className="absolute inset-0 bg-charcoal/70" />
         <div className="relative flex h-full flex-col items-center justify-center px-12 text-center">
           <p className="font-display text-4xl tracking-[0.28em] text-ivory">VENECIA</p>
           <p className="mt-2 text-[10px] uppercase tracking-luxe text-gold">Alta Costura</p>
-          <p className="mt-10 max-w-sm text-sm leading-relaxed text-ivory/70">
+          <span aria-hidden className="mt-8 h-px w-16 bg-gold/50" />
+          <p className="mt-8 max-w-sm text-sm leading-relaxed text-ivory/70">
             Cada vestido empieza con una conversación. Entra para ver tus confecciones, tus medidas
             guardadas o para administrar el taller.
           </p>
         </div>
+        {/* <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/images/login-atelier.jpg)' }} /> — descomentar cuando exista la foto real */}
       </div>
 
       {/* Formulario */}

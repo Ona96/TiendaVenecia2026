@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { ArrowRight } from 'lucide-react';
@@ -8,6 +7,7 @@ import { useCatalogStore, selectPublishedProducts } from '@/store/catalog-store'
 import { CATEGORY_LABEL } from '@/lib/constants';
 import { formatCurrency } from '@/lib/utils';
 import { useMounted } from '@/lib/hooks';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 export function FeaturedCollection() {
   const mounted = useMounted();
@@ -33,10 +33,10 @@ export function FeaturedCollection() {
             className="group"
           >
             <div className="relative aspect-[3/4] overflow-hidden bg-line">
-              <Image
+              <ProductImage
                 src={dress.images[0]}
                 alt={dress.name}
-                fill
+                fallbackLabel={dress.name}
                 sizes="(min-width: 1024px) 25vw, 50vw"
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
               />

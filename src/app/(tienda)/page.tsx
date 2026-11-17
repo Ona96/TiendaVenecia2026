@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Hand, Ruler, Scissors, Sparkles, Truck } from 'lucide-react';
 import { NewsletterForm } from '@/components/store/NewsletterForm';
@@ -28,18 +27,26 @@ const artisanSteps = [
 export default function HomePage() {
   return (
     <div>
-      {/* Hero editorial */}
-      <section className="relative flex min-h-[92vh] items-center justify-center overflow-hidden">
-        <Image
-          src="https://picsum.photos/seed/venecia-hero/2000/1200"
-          alt="Atelier Venecia"
-          fill
-          priority
-          className="object-cover"
+      {/* Hero editorial: escenario tipográfico (reemplazable por foto real del atelier) */}
+      <section className="relative flex min-h-[92vh] items-center justify-center overflow-hidden bg-charcoal">
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 80% 60% at 70% 20%, rgba(197, 160, 89, 0.14), transparent 60%), radial-gradient(ellipse 60% 50% at 20% 90%, rgba(197, 160, 89, 0.08), transparent 55%), linear-gradient(160deg, #1a1a1a 0%, #22201c 55%, #2c2618 100%)',
+          }}
         />
-        <div className="absolute inset-0 bg-charcoal/60" />
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 flex select-none items-end justify-center overflow-hidden"
+        >
+          <span className="translate-y-[22%] font-display text-[26vw] leading-none text-ivory/[0.04] lg:text-[20rem]">
+            VENECIA
+          </span>
+        </div>
         <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
-          <p className="eyebrow text-gold">Alta Costura · Buenos Aires</p>
+          <p className="eyebrow text-gold">Alta Costura · Misiones, Argentina</p>
           <h1 className="mt-6 font-display text-4xl leading-tight text-ivory sm:text-5xl lg:text-6xl">
             Vestidos que se cosen
             <br />
@@ -139,13 +146,30 @@ export default function HomePage() {
       {/* Confección a medida */}
       <section id="medida" className="mx-auto max-w-7xl px-5 py-24 lg:px-10">
         <div className="grid items-center gap-12 lg:grid-cols-2">
-          <div className="relative aspect-[4/5] overflow-hidden">
-            <Image
-              src="https://picsum.photos/seed/venecia-medida/900/1100"
-              alt="Confección a medida"
-              fill
-              className="object-cover"
+          <div className="relative aspect-[4/5] overflow-hidden bg-charcoal">
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 70% 50% at 30% 20%, rgba(197, 160, 89, 0.16), transparent 60%), linear-gradient(150deg, #1a1a1a 0%, #26221c 60%, #33291a 100%)',
+              }}
             />
+            <div className="relative flex h-full flex-col items-center justify-center px-8 text-center">
+              <span
+                aria-hidden
+                className="font-display text-6xl leading-none text-gold/40 lg:text-7xl"
+              >
+                V
+              </span>
+              <p className="mt-4 text-[10px] uppercase tracking-luxe text-ivory/60">
+                Tres pruebas de calce
+              </p>
+              <p className="mt-8 max-w-xs font-display text-2xl leading-snug text-ivory">
+                El molde es tuyo y de nadie más.
+              </p>
+            </div>
+            {/* <Image src="/images/atelier-medida.jpg" alt="Confección a medida en el atelier" fill className="object-cover" /> — descomentar cuando exista la foto real */}
           </div>
           <div>
             <p className="eyebrow">A tu cuerpo</p>

@@ -14,8 +14,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const img = (slug: string, n: number) =>
-  `https://picsum.photos/seed/venecia-${slug}-${n}/900/1200`;
+const img = (slug: string, n: number) => `/images/products/${slug}-${n}.jpg`;
 
 const DEMO = true;
 
@@ -336,7 +335,7 @@ async function main() {
       },
     });
 
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 1; i++) {
       const url = img(p.slug, i);
       const existing = await prisma.productImage.findFirst({
         where: { productId: product.id, url },

@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle2, PackageCheck, Scissors } from 'lucide-react';
@@ -300,7 +300,7 @@ export default function CheckoutPage() {
               {items.map((item) => (
                 <li key={item.key} className="flex gap-3">
                   <div className="relative h-16 w-12 shrink-0 overflow-hidden bg-line">
-                    <Image src={item.image} alt={item.name} fill sizes="48px" className="object-cover" />
+                    <ProductImage src={item.image} alt={item.name} fallbackLabel={item.name} sizes="48px" className="object-cover" />
                   </div>
                   <div className="flex-1 text-xs">
                     <p className="text-sm text-charcoal">{item.name}</p>

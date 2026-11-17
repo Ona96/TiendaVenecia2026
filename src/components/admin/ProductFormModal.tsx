@@ -24,11 +24,7 @@ const EMPTY_SIZES: string[] = [];
 
 function defaultImages(name: string): string[] {
   const base = slugify(name) || 'venecia-nueva';
-  return [
-    `https://picsum.photos/seed/venecia-${base}-1/900/1200`,
-    `https://picsum.photos/seed/venecia-${base}-2/900/1200`,
-    `https://picsum.photos/seed/venecia-${base}-3/900/1200`,
-  ];
+  return [`/images/products/${base}-1.jpg`];
 }
 
 export function ProductFormModal({ product, onClose }: ProductFormModalProps) {

@@ -1,11 +1,11 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { Eye } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { CATEGORY_LABEL } from '@/lib/constants';
 import { formatCurrency, cn } from '@/lib/utils';
+import { ProductImage } from '@/components/ui/ProductImage';
 
 interface ProductCardProps {
   product: Product;
@@ -21,11 +21,10 @@ export function ProductCard({ product, onQuickView }: ProductCardProps) {
       <div className="relative overflow-hidden bg-line">
         <Link href={`/producto/${product.slug}`} aria-label={product.name}>
           <div className="relative aspect-[3/4]">
-            <Image
+            <ProductImage
               src={product.images[0]}
               alt={product.name}
-              fill
-              sizes="(min-width: 1024px) 30vw, 50vw"
+              fallbackLabel={product.name}
               className={cn(
                 'object-cover transition-all duration-700 group-hover:scale-105',
                 soldOut && 'opacity-50 grayscale',

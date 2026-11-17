@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { ProductImage } from '@/components/ui/ProductImage';
 import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowRight, Clock, X } from 'lucide-react';
@@ -54,10 +54,10 @@ export function QuickViewModal({ product, onClose }: QuickViewModalProps) {
         </button>
 
         <div className="relative aspect-[3/4] md:aspect-auto">
-          <Image
+          <ProductImage
             src={product.images[0]}
             alt={product.name}
-            fill
+            fallbackLabel={product.name}
             sizes="(min-width: 768px) 50vw, 100vw"
             className="object-cover"
           />
