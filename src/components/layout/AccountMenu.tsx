@@ -61,23 +61,9 @@ export function AccountMenu() {
             <p className="truncate text-xs text-stone-500">{currentUser.email}</p>
           </div>
           <div className="border-t border-line" />
-          <Link
-            href="/mis-pedidos"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal transition-colors hover:bg-gold/10"
-          >
-            <Package className="h-4 w-4 text-gold-dark" />
-            Mis pedidos
-          </Link>
-          <Link
-            href="/perfil"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal transition-colors hover:bg-gold/10"
-          >
-            <UserRound className="h-4 w-4 text-gold-dark" />
-            Mi perfil
-          </Link>
-          {currentUser.role === 'ADMIN' && (
+          {currentUser.role === 'ADMIN' ? (
+            /* La administradora gestiona, no compra: el panel es su única
+               sección personal. Perfil/pedidos son de clientas. */
             <Link
               href="/admin"
               onClick={() => setOpen(false)}
@@ -86,6 +72,25 @@ export function AccountMenu() {
               <LayoutDashboard className="h-4 w-4 text-gold-dark" />
               Panel del atelier
             </Link>
+          ) : (
+            <>
+              <Link
+                href="/mis-pedidos"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal transition-colors hover:bg-gold/10"
+              >
+                <Package className="h-4 w-4 text-gold-dark" />
+                Mis pedidos
+              </Link>
+              <Link
+                href="/perfil"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal transition-colors hover:bg-gold/10"
+              >
+                <UserRound className="h-4 w-4 text-gold-dark" />
+                Mi perfil
+              </Link>
+            </>
           )}
           <div className="border-t border-line" />
           <button
