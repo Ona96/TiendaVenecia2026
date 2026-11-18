@@ -35,6 +35,25 @@
 - Footer: "Misiones, Argentina" (antes decía Palermo/Buenos Aires,
   inconsistente con el hero) + links legales.
 
+### Subida de fotos desde el panel (integrado 18/11) — ✅
+
+La boutique pidió subir las fotos ella misma para agarrarle la mano al
+sistema:
+
+- **Supabase Storage** (migración `20261118123000_storage_productos`):
+  bucket público `productos`; lectura pública; escritura SOLO para ADMIN
+  (misma guardia `is_admin()` del dominio — una clienta queda bloqueada).
+- ProductFormModal: cada vista de foto tiene botón **«Subir»** (elige
+  archivo → sube con la sesión de la admin → completa la URL sola).
+  Se sigue pudiendo pegar una URL externa a mano.
+- `next.config.mjs`: patrón de imágenes remotas del host de Supabase
+  (derivado de `NEXT_PUBLIC_SUPABASE_URL`, sin hardcodear).
+- Verificación E2E (`scripts/verify-storage.ts`, 5/5): admin sube ✓ ·
+  URL pública sin sesión ✓ · clienta bloqueada por RLS ✓ · limpieza ✓.
+
+> Nota de proceso: un bug mío en `next.config.mjs` (sintaxis TS en un
+> archivo .mjs) tiró el servidor dev; corregido al instante y verificado.
+
 ## Verificación
 
 | Prueba | Resultado |

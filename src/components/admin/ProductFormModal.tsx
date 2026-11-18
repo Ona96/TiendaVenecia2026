@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { ImagePlus, X } from 'lucide-react';
+import { ImagePlus, Loader2, Upload, X } from 'lucide-react';
 import type { AdminProductView } from '@/server/admin/products';
 import { saveProduct, type ProductInput } from '@/server/admin/actions';
+import { uploadProductImage } from '@/lib/storage';
+import { slugify } from '@/lib/utils';
 import { CATEGORY_SLUGS, OCCASIONS, STANDARD_SIZES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { fromCents } from '@/lib/money';
@@ -28,6 +30,7 @@ function defaultImages(name: string): string[] {
 export function ProductFormModal({ product, fabrics, onClose }: ProductFormModalProps) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
 
   const [draft, setDraft] = useState({
     name: product?.name ?? '',
@@ -64,6 +67,24 @@ export function ProductFormModal({ product, fabrics, onClose }: ProductFormModal
       images[index] = value;
       return { ...prev, images };
     });
+  }
+
+  async function handleUpload(index: number, file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    setUploadingSlot(index);
+    try {
+      // Sube a Supabase Storage con la sesión de la admin; la URL
+      // pública queda lista para guardar con la prenda.
+      const result = await uploadProductImage(file, slugify(draft.name));
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      updateImage(index, result.url);
+    } finally {
+      setUploadingSlot(null);
+    }
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -267,22 +288,55 @@ export function ProductFormModal({ product, fabrics, onClose }: ProductFormModal
           <div>
             <p className="flex items-center gap-2 label">
               <ImagePlus className="h-3.5 w-3.5" />
-              Imágenes (ruta o URL)
+              Fotos de la prenda
             </p>
             <div className="space-y-3">
               {[0, 1, 2].map((index) => (
-                <input
-                  key={index}
-                  className="field"
-                  value={draft.images[index] ?? ''}
-                  onChange={(e) => updateImage(index, e.target.value)}
-                  placeholder={`/images/products/vestido-x-${index + 1}.jpg`}
-                />
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    className="field"
+                    value={draft.images[index] ?? ''}
+                    onChange={(e) => updateImage(index, e.target.value)}
+                    placeholder={
+                      index === 0
+                        ? 'Foto principal (subila o pegá la ruta)'
+                        : `Vista ${index + 1} (opcional)`
+                    }
+                    aria-label={`Ruta o URL de la foto ${index + 1}`}
+                  />
+                  <label
+                    className={cn(
+                      'flex cursor-pointer items-center gap-1.5 whitespace-nowrap border px-4 py-2.5 text-[10px] uppercase tracking-[0.16em] transition-colors',
+                      uploadingSlot === index
+                        ? 'border-gold bg-gold/10 text-gold-dark'
+                        : 'border-charcoal/25 text-charcoal hover:border-gold hover:text-gold-dark',
+                    )}
+                  >
+                    {uploadingSlot === index ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Subiendo…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-3.5 w-3.5" />
+                        Subir
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={uploadingSlot !== null}
+                      onChange={(e) => void handleUpload(index, e.target.files?.[0])}
+                    />
+                  </label>
+                </div>
               ))}
             </div>
             <p className="mt-2 text-[11px] text-stone-400">
-              Convención: <code>/images/products/&lt;slug&gt;-&lt;n&gt;.jpg</code>. Si el archivo no
-              existe, la ficha muestra el panel de atelier.
+              «Subir» guarda la foto en el depósito del atelier y completa la ruta sola. También
+              podés pegar una URL externa a mano.
             </p>
           </div>
 

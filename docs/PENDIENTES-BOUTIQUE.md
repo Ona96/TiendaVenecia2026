@@ -6,15 +6,25 @@ ordenado por prioridad.
 
 ## 1. 📸 Fotos reales de las prendas (ME BLOQUEA EL LOOK FINAL)
 
-**Convención lista (solo arrastrar archivos, cero código):**
-- Prendas: `public/images/products/<slug>-1.jpg` (más `-2`, `-3` para vistas
-  extra). Ejemplo: `vestido-aurelia-1.jpg`. Vertical 3:4 recomendado.
-- Hero de la home: `public/images/hero-atelier.jpg` (horizontal 16:9).
-- Sección "Confección a medida": `public/images/atelier-medida.jpg`
-  (vertical 4:5).
-- Login: `public/images/login-atelier.jpg` (vertical).
-Mientras no existan, la web muestra paneles elegantes del atelier (nunca
-fotos rotas). Al llegar los archivos, todo se enciende solo.
+**✅ INTEGRADO (18/11): subís las fotos desde el propio panel — así le
+agarrás la mano al sistema:**
+
+1. Entrá a `/admin` → **Prendas** → editá la prenda (o creala).
+2. En «Fotos de la prenda», tocá **«Subir»** y elegí el archivo de tu
+   computadora (JPG/PNG/WebP). La foto va al depósito en la nube del
+   atelier (Supabase Storage) y la ruta se completa sola.
+3. Guardá: la foto aparece en la colección y la ficha al instante.
+   Subí hasta 3 vistas por prenda; la primera es la principal.
+
+Reglas de seguridad ya verificadas (5/5 pruebas): solo la administradora
+puede subir; una clienta queda bloqueada; el público ve las fotos sin
+sesión. Convención alternativa para lotes grandes: si preferís arrastrar
+archivos a mano en tu máquina local, `public/images/products/<slug>-1.jpg`
+también funciona — pero **en producción la única vía es el botón Subir**
+(el hosting no permite escribir archivos en el servidor).
+
+Ideal: vertical 3:4, buena luz, fondo limpio. Mientras no haya foto, la
+ficha muestra un panel elegante del atelier (nunca una foto rota).
 
 ## 2. 🔐 Cambiar la contraseña del admin demo (URGENTE, 2 minutos)
 
