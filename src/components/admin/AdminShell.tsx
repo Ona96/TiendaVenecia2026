@@ -7,6 +7,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Scissors,
   Shirt,
   Users,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ const ADMIN_NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/pedidos', label: 'Pedidos', icon: ClipboardList, exact: false },
   { href: '/admin/prendas', label: 'Prendas', icon: Shirt, exact: false },
+  { href: '/admin/presupuestos', label: 'Presupuestos', icon: Scissors, exact: false },
   { href: '/admin/clientes', label: 'Clientas', icon: Users, exact: false },
 ];
 

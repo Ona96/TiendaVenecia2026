@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { X } from 'lucide-react';
+import { Check, Plus, Wallet, X } from 'lucide-react';
 import type { AdminOrderView } from '@/server/admin/orders';
-import { updateOrderStatus } from '@/server/admin/actions';
+import { updateOrderStatus, registerDeposit, verifyDeposit } from '@/server/admin/actions';
 import { AdminStatusBadge } from '@/components/admin/AdminStatusBadge';
 import { ORDER_STATUS_LABEL, ORDER_TRANSITIONS } from '@/domain/state-machines';
 import { formatCents } from '@/lib/money';
-import { formatDateTime } from '@/lib/utils';
+import { formatDate, formatDateTime, cn } from '@/lib/utils';
 import { ProductImage } from '@/components/ui/ProductImage';
 import type { OrderStatus } from '@prisma/client';
 
@@ -22,12 +22,33 @@ export function OrderDetailModal({ order, onClose }: { order: AdminOrderView; on
   const current = order.status as OrderStatus;
   const allowed = ORDER_TRANSITIONS[current] ?? [];
 
+  // Pagos: comprometido = todo lo no rechazado/reembolsado.
+  const committedCents = order.payments
+    .filter((p) => p.status !== 'RECHAZADO' && p.status !== 'REEMBOLSADO')
+    .reduce((acc, p) => acc + p.amountCents, 0);
+
   function changeStatus(next: OrderStatus) {
     setError(null);
     start(async () => {
       const result = await updateOrderStatus(order.id, next);
       if (!result.ok) setError(result.error);
       else onClose();
+    });
+  }
+
+  function runDeposit(amountArs: number) {
+    setError(null);
+    start(async () => {
+      const result = await registerDeposit(order.id, amountArs);
+      if (!result.ok) setError(result.error);
+    });
+  }
+
+  function runVerify(paymentId: string, verified: boolean) {
+    setError(null);
+    start(async () => {
+      const result = await verifyDeposit(paymentId, verified);
+      if (!result.ok) setError(result.error);
     });
   }
 
@@ -156,6 +177,111 @@ export function OrderDetailModal({ order, onClose }: { order: AdminOrderView; on
                 <dd className="font-medium text-charcoal">{formatCents(order.totalCents)}</dd>
               </div>
             </dl>
+          </div>
+
+          {/* Pagos: señas y saldos (Fase 5) */}
+          <div className="border border-line bg-white p-5">
+            <p className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-charcoal">
+              <Wallet className="h-4 w-4 text-gold-dark" />
+              Pagos y saldo
+            </p>
+
+            <ul className="mt-4 space-y-2 text-sm">
+              {order.payments.map((payment) => (
+                <li
+                  key={payment.id}
+                  className="flex flex-wrap items-center justify-between gap-2 border border-line px-3 py-2"
+                >
+                  <div>
+                    <p className="text-charcoal">{formatCents(payment.amountCents)}</p>
+                    <p className="text-[11px] text-stone-400">
+                      {payment.method === 'TRANSFERENCIA' ? 'Transferencia' : 'Mercado Pago'} ·{' '}
+                      {payment.declaredAt ? `declarado ${formatDate(payment.declaredAt)}` : ' inicial'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.12em]',
+                        payment.status === 'VERIFICADO' && 'bg-success-soft text-success',
+                        payment.status === 'PENDIENTE' && 'bg-warn-soft text-warn',
+                        payment.status === 'PENDIENTE_VERIFICACION' && 'bg-gold/15 text-gold-dark',
+                        payment.status === 'RECHAZADO' && 'bg-error-soft text-error',
+                      )}
+                    >
+                      {payment.status.replace(/_/g, ' ').toLowerCase()}
+                    </span>
+                    {payment.status === 'PENDIENTE_VERIFICACION' && (
+                      <span className="flex gap-1">
+                        <button
+                          onClick={() => runVerify(payment.id, true)}
+                          disabled={pending}
+                          aria-label="Verificar pago"
+                          className="border border-success/40 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-success transition-colors hover:bg-success-soft disabled:opacity-40"
+                        >
+                          Verificar
+                        </button>
+                        <button
+                          onClick={() => runVerify(payment.id, false)}
+                          disabled={pending}
+                          aria-label="Rechazar pago"
+                          className="border border-error/40 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-error transition-colors hover:bg-error-soft disabled:opacity-40"
+                        >
+                          Rechazar
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-stone-500">Comprometido</span>
+                <span className="text-charcoal">{formatCents(committedCents)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-stone-500">Saldo</span>
+                <span className="font-medium text-charcoal">
+                  {formatCents(Math.max(0, order.totalCents - committedCents))}
+                </span>
+              </div>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const input = (event.currentTarget.elements.namedItem('seña') as HTMLInputElement) ?? null;
+                const amount = Number(input?.value);
+                if (!amount) return;
+                runDeposit(Math.round(amount));
+                if (input) input.value = '';
+              }}
+              className="mt-4 flex gap-2"
+            >
+              <input
+                name="seña"
+                type="number"
+                min={1000}
+                step={1000}
+                placeholder="Seña en pesos…"
+                aria-label="Monto de la seña en pesos"
+                className="field py-2"
+              />
+              <button
+                type="submit"
+                disabled={pending}
+                className="flex items-center gap-1.5 border border-charcoal/25 px-4 text-[10px] uppercase tracking-[0.16em] text-charcoal transition-colors hover:border-gold hover:text-gold-dark disabled:opacity-40"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Seña
+              </button>
+            </form>
+            <p className="mt-2 text-[11px] text-stone-400">
+              La seña queda «por verificar» hasta que controles el banco: el comprobante por sí
+              solo nunca marca «pagado».
+            </p>
           </div>
 
           {/* Historial auditable */}

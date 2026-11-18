@@ -14,8 +14,6 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
-import { useAuthStore } from '@/store/auth-store';
-import { useCustomersStore } from '@/store/customers-store';
 import { useCartStore } from '@/store/cart-store';
 import {
   EMPTY_MEASUREMENTS,
@@ -32,14 +30,13 @@ import type { CustomMeasurements, Product } from '@/lib/types';
  * (talles, medidas, carrito). El precio del carrito es informativo:
  * el checkout recalcula todo en el servidor.
  */
-export function ProductDetailClient({ product }: { product: Product }) {
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const customers = useCustomersStore((s) => s.customers);
-  const savedMeasurements = currentUser
-    ? customers.find((c) => c.email.toLowerCase() === currentUser.email.toLowerCase())
-        ?.savedMeasurements
-    : undefined;
-
+export function ProductDetailClient({
+  product,
+  savedMeasurements,
+}: {
+  product: Product;
+  savedMeasurements?: CustomMeasurements | null;
+}) {
   const addToCart = useCartStore((s) => s.addToCart);
 
   const [activeImage, setActiveImage] = useState(0);

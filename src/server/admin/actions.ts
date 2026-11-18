@@ -7,7 +7,8 @@ import { assertAdmin } from '@/server/admin/guard';
 import { toCents } from '@/lib/money';
 import { slugify } from '@/lib/utils';
 import { canTransitionOrder } from '@/domain/state-machines';
-import type { OrderStatus } from '@prisma/client';
+import { canTransitionPayment } from '@/domain/state-machines';
+import type { OrderStatus, PaymentStatus } from '@prisma/client';
 
 /**
  * Acciones de catálogo del panel (server actions).
@@ -267,5 +268,98 @@ export async function updateCustomerContact(
   } catch (err) {
     console.error('[updateCustomerContact]', err);
     return { ok: false, error: 'No pudimos guardar el teléfono.' };
+  }
+}
+
+export async function registerDeposit(
+  orderId: string,
+  amountArs: number,
+  note?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertAdmin();
+
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) return { ok: false, error: 'El pedido ya no existe.' };
+
+    if (!Number.isInteger(amountArs) || amountArs <= 0) {
+      return { ok: false, error: 'Ingresá un monto válido en pesos.' };
+    }
+    const amountCents = toCents(amountArs);
+
+    // Control de coherencia: las señas comprometidas no superan el total.
+    const payments = await prisma.payment.findMany({ where: { orderId } });
+    const committed = payments
+      .filter((p) => p.status !== 'RECHAZADO' && p.status !== 'REEMBOLSADO')
+      .reduce((acc, p) => acc + p.amountCents, 0);
+    if (committed + amountCents > order.totalCents) {
+      return {
+        ok: false,
+        error: 'La seña supera el saldo pendiente del pedido.',
+      };
+    }
+
+    await prisma.payment.create({
+      data: {
+        orderId,
+        method: 'TRANSFERENCIA',
+        status: 'PENDIENTE_VERIFICACION',
+        amountCents,
+        currency: 'ARS',
+        note: note?.trim() || null,
+        declaredAt: new Date(),
+      },
+    });
+
+    revalidatePath('/admin/pedidos');
+    return { ok: true };
+  } catch (err) {
+    console.error('[registerDeposit]', err);
+    return { ok: false, error: 'No pudimos registrar la seña.' };
+  }
+}
+
+export async function verifyDeposit(
+  paymentId: string,
+  verified: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const admin = await assertAdmin();
+
+    const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+    if (!payment) return { ok: false, error: 'El pago ya no existe.' };
+
+    const next: PaymentStatus = verified ? 'VERIFICADO' : 'RECHAZADO';
+    if (!canTransitionPayment(payment.status, next)) {
+      return { ok: false, error: `No se puede pasar de ${payment.status} a ${next}.` };
+    }
+
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: next, verifiedAt: new Date(), verifiedByProfile: admin.id },
+    });
+
+    // El estado de pago del pedido resume sus pagos: si alguno verificó,
+    // el pedido pasa a PENDIENTE_VERIFICACION (o queda PENDIENTE).
+    const payments = await prisma.payment.findMany({ where: { orderId: payment.orderId } });
+    const anyVerified = payments.some((p) => p.status === 'VERIFICADO');
+    const anyPendingCheck = payments.some((p) => p.status === 'PENDIENTE_VERIFICACION');
+    const paymentStatus: PaymentStatus = anyVerified
+      ? 'VERIFICADO'
+      : anyPendingCheck
+        ? 'PENDIENTE_VERIFICACION'
+        : 'PENDIENTE';
+
+    await prisma.order.update({
+      where: { id: payment.orderId },
+      data: { paymentStatus },
+    });
+
+    revalidatePath('/admin/pedidos');
+    revalidatePath('/admin');
+    return { ok: true };
+  } catch (err) {
+    console.error('[verifyDeposit]', err);
+    return { ok: false, error: 'No pudimos actualizar el pago.' };
   }
 }

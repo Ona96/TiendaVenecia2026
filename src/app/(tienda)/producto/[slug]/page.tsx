@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getPublishedProductBySlug } from '@/server/store/catalog';
+import { getMyLatestMeasurements } from '@/server/store/profile';
 import { ProductDetailClient } from '@/components/store/ProductDetailClient';
 
 /**
@@ -14,7 +15,10 @@ export default async function ProductoPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await getPublishedProductBySlug(slug);
+  const [product, savedMeasurements] = await Promise.all([
+    getPublishedProductBySlug(slug),
+    getMyLatestMeasurements(),
+  ]);
 
   if (!product) {
     return (
@@ -35,5 +39,5 @@ export default async function ProductoPage({
     );
   }
 
-  return <ProductDetailClient product={product} />;
+  return <ProductDetailClient product={product} savedMeasurements={savedMeasurements} />;
 }
