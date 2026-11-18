@@ -18,6 +18,13 @@ export const env = {
   /** Email transaccional (Fase 6): vacío = stub marcado, nunca "enviado" falso. */
   emailProviderUrl: process.env.EMAIL_PROVIDER_URL ?? '',
   emailProviderKey: process.env.EMAIL_PROVIDER_API_KEY ?? '',
+  /**
+   * Remitente visible por las clientas. Con Resend exige dominio verificado;
+   * sin él solo se puede enviar desde onboarding@resend.dev a la casilla
+   * propia del dueño de la cuenta (prueba, no producción).
+   */
+  emailFrom:
+    process.env.EMAIL_FROM ?? 'Venecia Alta Costura <hola@venecia.com.ar>',
 };
 
 /** True solo si el proyecto Supabase tiene las claves públicas cargadas. */

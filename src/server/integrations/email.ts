@@ -119,7 +119,7 @@ async function deliver(template: EmailTemplate): Promise<EmailResult> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Venecia Alta Costura <hola@venecia.com.ar>',
+      from: env.emailFrom,
       to: [template.to],
       subject: template.subject,
       text: template.body,
