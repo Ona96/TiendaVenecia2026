@@ -1,84 +1,27 @@
-'use client';
-
-import { ProductImage } from '@/components/ui/ProductImage';
 import Link from 'next/link';
-import { LogIn, Scissors } from 'lucide-react';
-import { useAuthStore } from '@/store/auth-store';
-import { useOrdersStore, selectOrdersByEmail } from '@/store/orders-store';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { CUSTOM_SIZE, ORDER_STATUS_META, ORDER_STATUS_ORDER } from '@/lib/constants';
-import { measurementsSummary } from '@/components/store/MeasurementsForm';
-import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
-import { useMounted } from '@/lib/hooks';
-import { Skeleton } from '@/components/ui/Skeleton';
-import type { Order } from '@/lib/types';
+import { LogIn, Package } from 'lucide-react';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { prisma } from '@/server/db';
+import { AdminStatusBadge } from '@/components/admin/AdminStatusBadge';
+import { ProductImage } from '@/components/ui/ProductImage';
+import { ORDER_STATUS_LABEL } from '@/domain/state-machines';
+import { formatCents } from '@/lib/money';
+import { formatDate, formatDateTime } from '@/lib/utils';
+import { CUSTOM_SIZE } from '@/lib/constants';
+import type { OrderStatus } from '@prisma/client';
 
-function OrderTimeline({ order }: { order: Order }) {
-  return (
-    <ol className="mt-5 space-y-0">
-      {ORDER_STATUS_ORDER.map((status, index) => {
-        const entry = order.history.find((h) => h.status === status);
-        const done = Boolean(entry);
-        const meta = ORDER_STATUS_META[status];
-        const isLast = index === ORDER_STATUS_ORDER.length - 1;
-        return (
-          <li key={status} className="flex gap-3">
-            <div className="flex flex-col items-center">
-              <span
-                className={cn(
-                  'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
-                  done ? meta.dot : 'bg-stone-300',
-                )}
-              />
-              {!isLast && (
-                <span
-                  className={cn('w-px flex-1', done ? 'bg-gold/50' : 'bg-line')}
-                  style={{ minHeight: 26 }}
-                />
-              )}
-            </div>
-            <div className={cn('pb-4', isLast && 'pb-0')}>
-              <p
-                className={cn(
-                  'text-xs uppercase tracking-[0.14em]',
-                  done ? 'text-charcoal' : 'text-stone-400',
-                )}
-              >
-                {meta.label}
-              </p>
-              <p className="mt-0.5 text-[11px] text-stone-400">
-                {done && entry ? formatDateTime(entry.at) : 'Pendiente'}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
+/**
+ * Mis pedidos (Fase 4): órdenes REALES de la clienta logueada.
+ * Server Component con sesión httpOnly: la clienta solo puede ver lo suyo
+ * (RLS refuerza, pero ni siquiera consultamos datos ajenos).
+ */
+export default async function MisPedidosPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
 
-export default function MisPedidosPage() {
-  const mounted = useMounted();
-  const currentUser = useAuthStore((s) => s.currentUser);
-  const orders = useOrdersStore((s) => s.orders);
-
-  if (!mounted) {
-    return (
-      <div className="mx-auto max-w-4xl px-5 py-24 lg:px-10">
-        <div className="mx-auto max-w-md space-y-3 text-center">
-          <Skeleton className="mx-auto h-3 w-24" />
-          <Skeleton className="mx-auto h-9 w-64" />
-          <Skeleton className="mx-auto h-4 w-80" />
-        </div>
-        <div className="mt-12 space-y-4">
-          <Skeleton className="h-36 w-full" />
-          <Skeleton className="h-36 w-full" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentUser) {
+  if (!user) {
     return (
       <div className="mx-auto max-w-xl px-5 py-28 text-center">
         <LogIn className="mx-auto h-8 w-8 text-gold/60" />
@@ -87,7 +30,7 @@ export default function MisPedidosPage() {
           El seguimiento de cada confección queda asociado a tu cuenta.
         </p>
         <Link
-          href="/login"
+          href="/login?next=/mis-pedidos"
           className="mt-8 inline-block bg-charcoal px-8 py-3.5 text-xs uppercase tracking-[0.22em] text-ivory transition-colors hover:bg-charcoal-soft"
         >
           Iniciar sesión
@@ -96,9 +39,14 @@ export default function MisPedidosPage() {
     );
   }
 
-  const myOrders = selectOrdersByEmail(orders, currentUser.email).filter(
-    (o) => o.customerId === currentUser.id || o.customerEmail.toLowerCase() === currentUser.email.toLowerCase(),
-  );
+  const orders = await prisma.order.findMany({
+    where: { profileId: user.id },
+    include: {
+      items: true,
+      history: { orderBy: { at: 'asc' } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-12 lg:px-10">
@@ -106,13 +54,13 @@ export default function MisPedidosPage() {
         <p className="eyebrow">Seguimiento</p>
         <h1 className="mt-3 font-display text-4xl text-charcoal">Mis pedidos</h1>
         <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-stone-500">
-          Hola {currentUser.name.split(' ')[0]}, así viajan tus vestidos por el taller.
+          Así viajan tus vestidos por el taller.
         </p>
       </div>
 
-      {myOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="mt-12 border border-line bg-white px-8 py-20 text-center">
-          <Scissors className="mx-auto h-8 w-8 text-gold/60" />
+          <Package className="mx-auto h-8 w-8 text-gold/60" />
           <p className="mt-4 font-display text-2xl text-charcoal">Todavía no tenés pedidos</p>
           <p className="mt-2 text-sm text-stone-500">
             Cuando confirmes tu primera confección, vas a ver cada paso acá.
@@ -125,72 +73,68 @@ export default function MisPedidosPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-12 space-y-6">
-          {myOrders.map((order) => (
-            <article key={order.id} className="border border-line bg-white p-7">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-5">
+        <ul className="mt-12 space-y-8">
+          {orders.map((order) => (
+            <li key={order.id} className="border border-line bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-4">
                 <div>
-                  <p className="font-display text-xl tracking-wider text-charcoal">{order.code}</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-stone-400">
-                    Pedido el {formatDateTime(order.createdAt)}
-                  </p>
+                  <p className="font-display text-lg tracking-wider text-charcoal">{order.code}</p>
+                  <p className="text-[11px] text-stone-400">{formatDate(order.createdAt.toISOString())}</p>
                 </div>
-                <StatusBadge status={order.status} />
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-charcoal">{formatCents(order.totalCents)}</p>
+                  <AdminStatusBadge status={order.status as OrderStatus} />
+                </div>
               </div>
 
-              <div className="grid gap-8 pt-5 md:grid-cols-2">
-                <div>
-                  <ul className="space-y-4">
-                    {order.items.map((item, index) => (
-                      <li key={`${order.id}-item-${index}`} className="flex gap-4">
-                        <div className="relative h-24 w-18 shrink-0 overflow-hidden bg-line" style={{ width: 72 }}>
-                          <ProductImage
-                            src={item.image}
-                            alt={item.name}
-                            fallbackLabel={item.name}
-                            sizes="72px"
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <p className="text-sm text-charcoal">{item.name}</p>
-                          {item.size === CUSTOM_SIZE ? (
-                            <p className="mt-1 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-gold-dark">
-                              <Scissors className="h-3 w-3" />
-                              A medida · {item.measurements ? measurementsSummary(item.measurements) : ''}
-                            </p>
-                          ) : (
-                            <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-stone-500">
-                              Talle {item.size} · x{item.quantity}
-                            </p>
-                          )}
-                          <p className="mt-1 text-sm text-stone-500">
-                            {formatCurrency(item.price * item.quantity)}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5 flex justify-between border-t border-line pt-4 text-sm">
-                    <span className="uppercase tracking-[0.16em] text-stone-500">Total</span>
-                    <span className="text-charcoal">{formatCurrency(order.total)}</span>
-                  </div>
-                  {order.workshopNotes && (
-                    <p className="mt-4 border border-gold/30 bg-gold/5 px-4 py-3 text-xs leading-relaxed text-gold-dark">
-                      <span className="font-medium uppercase tracking-[0.14em]">Nota para el taller:</span>{' '}
-                      {order.workshopNotes}
+              <ul className="divide-y divide-line px-6">
+                {order.items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-4 py-4">
+                    <div className="relative h-16 w-12 shrink-0 overflow-hidden bg-line">
+                      <ProductImage
+                        src={item.imageSnapshot ?? ''}
+                        alt={item.nameSnapshot}
+                        fallbackLabel={item.nameSnapshot}
+                        sizes="48px"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 text-xs">
+                      <p className="text-sm text-charcoal">{item.nameSnapshot}</p>
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-stone-500">
+                        {item.madeToMeasure || item.size === CUSTOM_SIZE
+                          ? 'Confección a medida'
+                          : `Talle ${item.size}`}{' '}
+                        · x{item.quantity}
+                      </p>
+                    </div>
+                    <p className="text-xs text-charcoal">
+                      {formatCents(item.unitPriceCents * item.quantity)}
                     </p>
-                  )}
-                </div>
+                  </li>
+                ))}
+              </ul>
 
-                <div>
-                  <p className="label">Estado de la confección</p>
-                  <OrderTimeline order={order} />
-                </div>
+              <div className="border-t border-line px-6 py-4">
+                <p className="label">Recorrido</p>
+                <ol className="mt-2 space-y-1.5">
+                  {[...order.history].reverse().map((entry) => (
+                    <li key={entry.id} className="flex flex-wrap items-center gap-2 text-xs">
+                      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gold/70" />
+                      <span className="text-charcoal">
+                        {entry.from
+                          ? `${ORDER_STATUS_LABEL[entry.from as OrderStatus]} → `
+                          : ''}
+                        {ORDER_STATUS_LABEL[entry.to as OrderStatus]}
+                      </span>
+                      <span className="text-stone-400">{formatDateTime(entry.at.toISOString())}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-            </article>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, Hand, Ruler, Scissors, Sparkles, Truck } from 'lucide-react';
 import { NewsletterForm } from '@/components/store/NewsletterForm';
 import { FeaturedCollection } from '@/components/store/FeaturedCollection';
+import { getFeaturedProducts } from '@/server/store/catalog';
 
 const artisanSteps = [
   {
@@ -24,7 +25,8 @@ const artisanSteps = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const featured = await getFeaturedProducts();
   return (
     <div>
       {/* Hero editorial: escenario tipográfico (reemplazable por foto real del atelier) */}
@@ -139,7 +141,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <FeaturedCollection />
+          <FeaturedCollection products={featured} />
         </div>
       </section>
 

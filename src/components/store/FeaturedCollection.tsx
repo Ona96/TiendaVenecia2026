@@ -1,27 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { useCatalogStore, selectPublishedProducts } from '@/store/catalog-store';
 import { CATEGORY_LABEL } from '@/lib/constants';
 import { formatCurrency } from '@/lib/utils';
-import { useMounted } from '@/lib/hooks';
 import { ProductImage } from '@/components/ui/ProductImage';
+import type { Product } from '@/lib/types';
 
-export function FeaturedCollection() {
-  const mounted = useMounted();
-  const products = useCatalogStore((s) => s.products);
-
-  const featured = useMemo(() => {
-    const published = selectPublishedProducts(products);
-    const preferred = published.filter((p) => p.featured);
-    return (preferred.length >= 4 ? preferred : published).slice(0, 4);
-  }, [products]);
-
-  if (!mounted) {
-    return <div className="mt-12 grid grid-cols-2 gap-5 lg:grid-cols-4" />;
-  }
+/** Destacadas de la home: datos reales pasados por el Server Component. */
+export function FeaturedCollection({ products }: { products: Product[] }) {
+  const featured = (products.filter((p) => p.featured).length >= 4
+    ? products.filter((p) => p.featured)
+    : products
+  ).slice(0, 4);
 
   return (
     <>
