@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:db": "vitest run --config vitest.config.db.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
@@ -31,7 +33,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.16.10",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.20",
@@ -41,12 +43,16 @@
     "prisma": "^6.19.3",
     "tailwindcss": "^3.4.13",
     "tsx": "^4.23.15",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "vitest": "^5.1.0"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
     "prisma@6.19.3": true,
     "@prisma/engines@6.19.3": true,
     "@prisma/client@6.19.3": true
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0"
   }
 }

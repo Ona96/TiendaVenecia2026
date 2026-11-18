@@ -28,10 +28,10 @@ import { sendEmail, orderConfirmationEmail } from '@/server/integrations/email';
 const RESERVATION_MINUTES = 30;
 
 const measurementsSchema = z.object({
-  busto: z.number().int().min(30).max(250),
-  cintura: z.number().int().min(30).max(250),
-  cadera: z.number().int().min(30).max(250),
-  largo: z.number().int().min(60).max(220),
+  busto: z.number().int().min(30, 'Busto fuera de rango.').max(250, 'Busto fuera de rango.'),
+  cintura: z.number().int().min(30, 'Cintura fuera de rango.').max(250, 'Cintura fuera de rango.'),
+  cadera: z.number().int().min(30, 'Cadera fuera de rango.').max(250, 'Cadera fuera de rango.'),
+  largo: z.number().int().min(60, 'Largo fuera de rango.').max(220, 'Largo fuera de rango.'),
 });
 
 const checkoutSchema = z.object({

@@ -116,6 +116,7 @@ export function ColeccionClient({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Aurelia, encaje…"
+          aria-label="Buscar vestido por nombre o tela"
           className="field"
         />
       </div>
@@ -212,6 +213,7 @@ export function ColeccionClient({
           step={10000}
           value={maxPrice}
           onChange={(e) => setMaxPriceOverride(Number(e.target.value))}
+          aria-label="Precio máximo del filtro"
           className="w-full accent-[#C5A059]"
         />
       </div>
@@ -262,6 +264,7 @@ export function ColeccionClient({
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
+          aria-label="Ordenar la colección"
           className="border border-line bg-white px-3 py-2 text-xs text-charcoal outline-none focus:border-gold"
         >
           {SORT_OPTIONS.map((option) => (

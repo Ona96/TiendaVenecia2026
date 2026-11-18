@@ -7,8 +7,10 @@ import { LoginForm } from '@/components/auth/LoginForm';
  */
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-charcoal" />}>
-      <LoginForm />
-    </Suspense>
+    <main>
+      <Suspense fallback={<div className="min-h-screen bg-charcoal" />}>
+        <LoginForm />
+      </Suspense>
+    </main>
   );
 }
