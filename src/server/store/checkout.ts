@@ -6,6 +6,11 @@ import { z } from 'zod';
 import { prisma } from '@/server/db';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SHIPPING_PROVINCES, CUSTOM_SIZE, FREE_SHIPPING_THRESHOLD, SHIPPING_FLAT } from '@/lib/constants';
+import {
+  isMercadoPagoConfigured,
+  createMercadoPagoPreference,
+} from '@/server/integrations/mercadopago';
+import { sendEmail, orderConfirmationEmail } from '@/server/integrations/email';
 
 /**
  * Checkout (Fase 4): el servidor es la única fuente de verdad comercial.
@@ -37,6 +42,7 @@ const checkoutSchema = z.object({
   city: z.string().trim().min(2, 'Completá la ciudad.'),
   province: z.string().trim(),
   notes: z.string().trim().optional(),
+  paymentMethod: z.enum(['TRANSFERENCIA', 'MERCADO_PAGO']).default('TRANSFERENCIA'),
   items: z
     .array(
       z.object({
@@ -59,6 +65,8 @@ export interface CheckoutResult {
   ok: true;
   code: string;
   totalCents: number;
+  /** Solo con Mercado Pago: URL de pago (la clienta es redirigida). */
+  initPoint?: string;
 }
 
 export interface CheckoutError {
@@ -69,14 +77,17 @@ export interface CheckoutError {
 /**
  * Barre reservas vencidas y devuelve el stock al catálogo.
  * Se invoca al inicio de cada checkout y desde el panel: sin cron, el
- * sistema se auto-corrige en cada uso.
+ * sistema se auto-corrige en cada uso. Las reservas de pedidos ya
+ * verificados (pagados) nunca se liberan.
  */
 export async function releaseExpiredReservations(): Promise<number> {
   const expired = await prisma.reservation.findMany({
-    where: { status: 'ACTIVA', expiresAt: { lt: new Date() }, orderId: null },
-    include: { variant: true },
+    where: { status: 'ACTIVA', expiresAt: { lt: new Date() } },
+    include: { order: { select: { paymentStatus: true } } },
   });
+  let released = 0;
   for (const reservation of expired) {
+    if (reservation.order && reservation.order.paymentStatus === 'VERIFICADO') continue;
     await prisma.$transaction([
       prisma.productVariant.update({
         where: { id: reservation.variantId },
@@ -87,8 +98,9 @@ export async function releaseExpiredReservations(): Promise<number> {
         data: { status: 'LIBERADA' },
       }),
     ]);
+    released += 1;
   }
-  return expired.length;
+  return released;
 }
 
 export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult | CheckoutError> {
@@ -246,7 +258,8 @@ export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult |
           },
         });
 
-        // Stock estándar: se reserva y se descuenta YA (nadie más lo compra).
+        // Stock estándar: se reserva (ligada al pedido desde el inicio),
+        // se descuenta YA y se consume al verificarse el pago (Fase 6).
         if (item.variantId) {
           await tx.productVariant.update({
             where: { id: item.variantId },
@@ -255,7 +268,7 @@ export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult |
           await tx.reservation.create({
             data: {
               variantId: item.variantId,
-              orderId: null, // se liga al confirmar el pago (Fase 6)
+              orderId: created.id,
               quantity: item.quantity,
               status: 'ACTIVA',
               expiresAt,
@@ -273,25 +286,70 @@ export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult |
         },
       });
 
-      // Pago: transferencia coordinada con la boutique (MP llega en Fase 6).
-      await tx.payment.create({
+      // Pago: MP con preferencia (si está configurado) o transferencia
+      // coordinada con la boutique. Nada se simula.
+      const paymentRow = await tx.payment.create({
         data: {
           orderId: created.id,
-          method: 'TRANSFERENCIA',
+          method:
+            data.paymentMethod === 'MERCADO_PAGO' && isMercadoPagoConfigured()
+              ? 'MERCADO_PAGO'
+              : 'TRANSFERENCIA',
           status: 'PENDIENTE',
           amountCents: totalCents,
           currency: 'ARS',
         },
       });
 
-      return created;
+      return { created, paymentRow };
     });
+
+    // 4b. Preferencia de Mercado Pago (si la clienta lo eligió y está activo).
+    let initPoint: string | undefined;
+    if (data.paymentMethod === 'MERCADO_PAGO' && isMercadoPagoConfigured()) {
+      const preference = await createMercadoPagoPreference({
+        orderId: order.created.id,
+        orderCode: order.created.code,
+        payerEmail: data.email,
+        payerName: data.name,
+        // El webhook de MP vuelve con esta referencia: nuestra fila de pago.
+        externalReference: order.paymentRow.id,
+        items: validated.map((i) => ({
+          title: i.nameSnapshot,
+          quantity: i.quantity,
+          unitPriceCents: i.unitPriceCents,
+        })),
+        shippingCents,
+      });
+      if (!preference.ok) {
+        // El pedido quedó registrado con transferencia como respaldo:
+        // la clienta no pierde la compra por una caída de MP.
+        console.error('[placeOrder] preferencia MP falló; queda transferencia como respaldo');
+      } else {
+        initPoint = preference.initPoint;
+      }
+    }
+
+    // Email de confirmación (proveedor o stub marcado; nunca bloquea).
+    await sendEmail(
+      orderConfirmationEmail({
+        to: data.email,
+        clientName: data.name,
+        code: order.created.code,
+        totalCents: order.created.totalCents,
+      }),
+    );
 
     revalidatePath('/admin');
     revalidatePath('/admin/pedidos');
     revalidatePath('/coleccion');
 
-    return { ok: true, code: order.code, totalCents: order.totalCents };
+    return {
+      ok: true,
+      code: order.created.code,
+      totalCents: order.created.totalCents,
+      initPoint,
+    };
   } catch (err) {
     console.error('[placeOrder]', err);
     return { ok: false, error: 'No pudimos registrar tu pedido. Probá de nuevo en un momento.' };

@@ -6,6 +6,7 @@ import { prisma } from '@/server/db';
 import { assertAdmin } from '@/server/admin/guard';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { toCents } from '@/lib/money';
+import { sendEmail, quoteProposedEmail } from '@/server/integrations/email';
 
 /**
  * Presupuestos (Fase 5).
@@ -136,7 +137,7 @@ export async function createQuoteVersion(
     const subtotalCents = data.items.reduce((acc, i) => acc + toCents(i.priceArs), 0);
     const validUntil = new Date(Date.now() + data.validDays * 86_400_000);
 
-    await prisma.quoteVersion.create({
+    const version = await prisma.quoteVersion.create({
       data: {
         quoteId: quote.id,
         version: nextVersion,
@@ -153,6 +154,17 @@ export async function createQuoteVersion(
         validUntil,
       },
     });
+
+    // Aviso a la clienta (proveedor o stub marcado; nunca bloquea).
+    await sendEmail(
+      quoteProposedEmail({
+        to: quote.email,
+        clientName: quote.name,
+        code: quote.code,
+        totalCents: subtotalCents,
+        validUntil: validUntil.toISOString().slice(0, 10),
+      }),
+    );
 
     revalidatePath('/admin/presupuestos');
     revalidatePath('/mis-presupuestos');

@@ -6,7 +6,7 @@ import { prisma } from '@/server/db';
 import { assertAdmin } from '@/server/admin/guard';
 import { toCents } from '@/lib/money';
 import { slugify } from '@/lib/utils';
-import { canTransitionOrder } from '@/domain/state-machines';
+import { canTransitionOrder, canTransitionShipping } from '@/domain/state-machines';
 import { canTransitionPayment } from '@/domain/state-machines';
 import type { OrderStatus, PaymentStatus } from '@prisma/client';
 
@@ -361,5 +361,89 @@ export async function verifyDeposit(
   } catch (err) {
     console.error('[verifyDeposit]', err);
     return { ok: false, error: 'No pudimos actualizar el pago.' };
+  }
+}
+
+// ------------------------------------------------------------
+// Envío manual (Fase 6): cotización y avance del envío.
+// ------------------------------------------------------------
+
+export async function quoteShipping(
+  orderId: string,
+  shippingArs: number,
+  note?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertAdmin();
+
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) return { ok: false, error: 'El pedido ya no existe.' };
+    if (order.shippingStatus !== 'A_COTIZAR') {
+      return { ok: false, error: 'El envío ya fue cotizado o está en camino.' };
+    }
+    if (!Number.isInteger(shippingArs) || shippingArs < 0) {
+      return { ok: false, error: 'Ingresá un costo de envío válido.' };
+    }
+
+    const shippingCents = toCents(shippingArs);
+    const totalCents = order.subtotalCents - order.discountCents + shippingCents;
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { shippingCents, totalCents, shippingStatus: 'COTIZADO' },
+    });
+    if (note?.trim()) {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { workshopNotes: order.workshopNotes ? `${order.workshopNotes}\n${note.trim()}` : note.trim() },
+      });
+    }
+
+    revalidatePath('/admin/pedidos');
+    return { ok: true };
+  } catch (err) {
+    console.error('[quoteShipping]', err);
+    return { ok: false, error: 'No pudimos cotizar el envío.' };
+  }
+}
+
+export async function advanceShipping(
+  orderId: string,
+  next: 'EN_CAMINO' | 'ENTREGADO',
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertAdmin();
+
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) return { ok: false, error: 'El pedido ya no existe.' };
+
+    if (!canTransitionShipping(order.shippingStatus, next)) {
+      return {
+        ok: false,
+        error: `No se puede pasar el envío de ${order.shippingStatus} a ${next}.`,
+      };
+    }
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { shippingStatus: next },
+    });
+
+    // Un envío entregado completa el ciclo comercial del pedido.
+    if (next === 'ENTREGADO' && canTransitionOrder(order.status, 'ENTREGADO')) {
+      await prisma.$transaction([
+        prisma.order.update({ where: { id: orderId }, data: { status: 'ENTREGADO' } }),
+        prisma.orderStatusHistory.create({
+          data: { orderId, from: order.status, to: 'ENTREGADO', note: 'Entrega del envío' },
+        }),
+      ]);
+    }
+
+    revalidatePath('/admin/pedidos');
+    revalidatePath('/mis-pedidos');
+    return { ok: true };
+  } catch (err) {
+    console.error('[advanceShipping]', err);
+    return { ok: false, error: 'No pudimos actualizar el envío.' };
   }
 }
