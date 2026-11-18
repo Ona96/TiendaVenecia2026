@@ -1,70 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { ImagePlus, X } from 'lucide-react';
-import { useCatalogStore, type ProductDraft } from '@/store/catalog-store';
-import {
-  CATEGORIES,
-  FABRICS,
-  OCCASIONS,
-  STANDARD_SIZES,
-} from '@/lib/constants';
-import { slugify, cn } from '@/lib/utils';
-import type { DressCategory, Product } from '@/lib/types';
+import type { AdminProductView } from '@/server/admin/products';
+import { saveProduct, type ProductInput } from '@/server/admin/actions';
+import { CATEGORY_SLUGS, FABRICS, OCCASIONS, STANDARD_SIZES } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { fromCents } from '@/lib/money';
 
 interface ProductFormModalProps {
   /** Prenda a editar, o null para crear una nueva. */
-  product: Product | null;
+  product: AdminProductView | null;
   onClose: () => void;
 }
 
-const EMPTY_FABRICS: string[] = [];
-const EMPTY_OCCASIONS: string[] = [];
-const EMPTY_SIZES: string[] = [];
-
 function defaultImages(name: string): string[] {
-  const base = slugify(name) || 'venecia-nueva';
-  return [`/images/products/${base}-1.jpg`];
+  return [`/images/products/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'venecia-nueva'}-1.jpg`];
 }
 
+/**
+ * Formulario de prendas sobre datos REALES (Fase 3).
+ * Guarda con una server action: la validación y el dinero en centavos
+ * se resuelven en el servidor, este formulario solo arma el payload.
+ */
 export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
-  const addProduct = useCatalogStore((s) => s.addProduct);
-  const updateProduct = useCatalogStore((s) => s.updateProduct);
-
-  const [draft, setDraft] = useState<ProductDraft>(() =>
-    product
-      ? {
-          name: product.name,
-          description: product.description,
-          price: product.price,
-          category: product.category,
-          fabrics: product.fabrics,
-          occasions: product.occasions,
-          sizes: product.sizes,
-          stock: product.stock,
-          productionHours: product.productionHours,
-          images: product.images.length > 0 ? product.images : defaultImages(product.name),
-          featured: product.featured,
-          status: product.status,
-        }
-      : {
-          name: '',
-          description: '',
-          price: 0,
-          category: 'FIESTA',
-          fabrics: EMPTY_FABRICS,
-          occasions: EMPTY_OCCASIONS,
-          sizes: EMPTY_SIZES,
-          stock: 3,
-          productionHours: 60,
-          images: defaultImages('nuevo-vestido'),
-          featured: false,
-          status: 'PUBLICADO',
-        },
-  );
+  const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function updateField<K extends keyof ProductDraft>(field: K, value: ProductDraft[K]) {
+  const [draft, setDraft] = useState({
+    name: product?.name ?? '',
+    description: product?.description ?? '',
+    priceArs: product ? Math.round(fromCents(product.priceCents)) : 0,
+    categorySlug: product?.categorySlug ?? 'fiesta',
+    fabrics: product?.fabrics ?? ([] as string[]),
+    occasions: product?.occasions ?? ([] as string[]),
+    sizes: product?.sizes ?? ([] as string[]),
+    stock: product?.stock ?? 3,
+    productionHours: product?.productionHours ?? 60,
+    images: product && product.images.length > 0 ? product.images : defaultImages('nuevo-vestido'),
+    featured: product?.featured ?? false,
+    status: product?.status === 'PAUSADO' ? ('PAUSADO' as const) : ('PUBLICADO' as const),
+  });
+
+  function updateField<K extends keyof typeof draft>(field: K, value: (typeof draft)[K]) {
     setDraft((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -86,41 +64,33 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
     });
   }
 
-  function handleSave(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const name = draft.name.trim();
-    if (!name) {
-      setError('El vestido necesita un nombre.');
-      return;
-    }
-    if (!Number.isFinite(draft.price) || draft.price <= 0) {
-      setError('Ingresá un precio válido mayor a cero.');
-      return;
-    }
-    if (!draft.description.trim()) {
-      setError('Escribí una descripción editorial para la ficha.');
-      return;
-    }
+    setError(null);
 
-    const images = draft.images.map((i) => i.trim()).filter(Boolean);
-    const safeImages = images.length > 0 ? images : defaultImages(name);
-
-    const payload: ProductDraft = {
-      ...draft,
-      name,
+    const payload: ProductInput = {
+      name: draft.name.trim(),
       description: draft.description.trim(),
-      price: Math.round(draft.price),
+      priceArs: Math.round(draft.priceArs),
+      categorySlug: draft.categorySlug,
+      fabrics: draft.fabrics,
+      occasions: draft.occasions,
+      sizes: draft.sizes,
       stock: Math.max(0, Math.round(draft.stock)),
       productionHours: Math.max(1, Math.round(draft.productionHours)),
-      images: safeImages,
+      images: draft.images.map((i) => i.trim()).filter(Boolean),
+      featured: draft.featured,
+      status: draft.status,
     };
 
-    if (product) {
-      updateProduct(product.id, payload);
-    } else {
-      addProduct(payload);
-    }
-    onClose();
+    start(async () => {
+      const result = await saveProduct(payload, product?.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onClose();
+    });
   }
 
   return (
@@ -128,7 +98,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
       <div className="absolute inset-0 bg-charcoal/60 backdrop-blur-sm" onClick={onClose} />
 
       <form
-        onSubmit={handleSave}
+        onSubmit={handleSubmit}
         className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto bg-ivory shadow-luxe"
       >
         <div className="sticky top-0 flex items-center justify-between border-b border-line bg-ivory px-7 py-5">
@@ -168,8 +138,8 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
                 min={0}
                 step={1000}
                 className="field"
-                value={draft.price || ''}
-                onChange={(e) => updateField('price', Number(e.target.value))}
+                value={draft.priceArs || ''}
+                onChange={(e) => updateField('priceArs', Number(e.target.value))}
               />
             </div>
             <div>
@@ -177,11 +147,11 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
               <select
                 id="p-category"
                 className="field"
-                value={draft.category}
-                onChange={(e) => updateField('category', e.target.value as DressCategory)}
+                value={draft.categorySlug}
+                onChange={(e) => updateField('categorySlug', e.target.value)}
               >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
+                {CATEGORY_SLUGS.map((cat) => (
+                  <option key={cat.slug} value={cat.slug}>
                     {cat.label}
                   </option>
                 ))}
@@ -222,7 +192,6 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
             </div>
           </div>
 
-          {/* Multi-selección */}
           <div>
             <p className="label">Telas</p>
             <div className="flex flex-wrap gap-2">
@@ -286,11 +255,10 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
             </div>
           </div>
 
-          {/* Imágenes */}
           <div>
             <p className="flex items-center gap-2 label">
               <ImagePlus className="h-3.5 w-3.5" />
-              Imágenes (URL)
+              Imágenes (ruta o URL)
             </p>
             <div className="space-y-3">
               {[0, 1, 2].map((index) => (
@@ -299,12 +267,13 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
                   className="field"
                   value={draft.images[index] ?? ''}
                   onChange={(e) => updateImage(index, e.target.value)}
-                  placeholder={`URL de imagen ${index + 1}`}
+                  placeholder={`/images/products/vestido-x-${index + 1}.jpg`}
                 />
               ))}
             </div>
             <p className="mt-2 text-[11px] text-stone-400">
-              Si dejás todo vacío generamos imágenes de muestra con el nombre del vestido.
+              Convención: <code>/images/products/&lt;slug&gt;-&lt;n&gt;.jpg</code>. Si el archivo no
+              existe, la ficha muestra el panel de atelier.
             </p>
           </div>
 
@@ -324,7 +293,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
                 id="p-status"
                 className="field py-2"
                 value={draft.status}
-                onChange={(e) => updateField('status', e.target.value as ProductDraft['status'])}
+                onChange={(e) => updateField('status', e.target.value as 'PUBLICADO' | 'PAUSADO')}
               >
                 <option value="PUBLICADO">Publicado</option>
                 <option value="PAUSADO">Pausado</option>
@@ -333,7 +302,7 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
           </div>
 
           {error && (
-            <p className="border border-red-300/60 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+            <p role="alert" className="border border-error-soft bg-error-soft px-4 py-2.5 text-xs text-error">
               {error}
             </p>
           )}
@@ -349,8 +318,15 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
           </button>
           <button
             type="submit"
-            className="bg-charcoal px-6 py-3 text-xs uppercase tracking-[0.22em] text-ivory transition-colors hover:bg-charcoal-soft"
+            disabled={pending}
+            className="inline-flex items-center gap-2 bg-charcoal px-6 py-3 text-xs uppercase tracking-[0.22em] text-ivory transition-colors hover:bg-charcoal-soft disabled:opacity-40"
           >
+            {pending && (
+              <span
+                aria-hidden
+                className="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent"
+              />
+            )}
             {product ? 'Guardar cambios' : 'Crear prenda'}
           </button>
         </div>

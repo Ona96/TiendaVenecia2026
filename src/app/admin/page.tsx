@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -10,92 +8,44 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { useOrdersStore } from '@/store/orders-store';
-import { useCustomersStore } from '@/store/customers-store';
-import { useCatalogStore } from '@/store/catalog-store';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { ORDER_STATUS_META } from '@/lib/constants';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
-import { useMounted } from '@/lib/hooks';
-import { Skeleton } from '@/components/ui/Skeleton';
-import type { OrderStatus } from '@/lib/types';
+import { requireAdmin } from '@/server/admin/guard';
+import { getDashboardStats } from '@/server/admin/stats';
+import { AdminStatusBadge } from '@/components/admin/AdminStatusBadge';
+import { formatCents } from '@/lib/money';
+import { formatDate, cn } from '@/lib/utils';
+import type { OrderStatus } from '@prisma/client';
 
-const WORKSHOP_STATUSES: OrderStatus[] = [
-  'PENDIENTE',
-  'EN_CORTE_Y_CONFECION',
-  'CONTROL_DE_CALIDAD',
-];
-
-export default function AdminDashboardPage() {
-  const mounted = useMounted();
-  const orders = useOrdersStore((s) => s.orders);
-  const customers = useCustomersStore((s) => s.customers);
-  const products = useCatalogStore((s) => s.products);
-
-  if (!mounted) {
-    return (
-      <div className="p-10">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-      </div>
-    );
-  }
-
-  const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);
-  const workshopOrders = orders.filter((o) => WORKSHOP_STATUSES.includes(o.status));
-  const deliveredOrders = orders.filter((o) => o.status === 'ENTREGADO');
-  const published = products.filter((p) => p.status === 'PUBLICADO');
-  const lowStock = published.filter((p) => p.stock <= 2);
-
-  // Prendas más vendidas: agregado de items sobre todos los pedidos.
-  const salesByProduct = new Map<string, { name: string; quantity: number; revenue: number }>();
-  for (const order of orders) {
-    for (const item of order.items) {
-      const current = salesByProduct.get(item.productId) ?? {
-        name: item.name,
-        quantity: 0,
-        revenue: 0,
-      };
-      current.quantity += item.quantity;
-      current.revenue += item.price * item.quantity;
-      salesByProduct.set(item.productId, current);
-    }
-  }
-  const topProducts = [...salesByProduct.entries()]
-    .map(([productId, stats]) => ({ productId, ...stats }))
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 4);
-
-  const recentOrders = [...orders]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 5);
+/**
+ * Dashboard del atelier (Fase 3): métricas REALES de la base,
+ * renderizadas en el servidor.
+ */
+export default async function AdminDashboardPage() {
+  const admin = await requireAdmin();
+  const stats = await getDashboardStats();
 
   const kpis = [
     {
       icon: Wallet,
       label: 'Ingresos totales',
-      value: formatCurrency(totalRevenue),
-      detail: `${deliveredOrders.length} pedidos entregados`,
+      value: formatCents(stats.revenueCents),
+      detail: `${stats.deliveredCount} pedidos entregados`,
     },
     {
       icon: ClipboardList,
       label: 'Pedidos en taller',
-      value: String(workshopOrders.length),
-      detail: `${orders.length} pedidos históricos`,
+      value: String(stats.workshopCount),
+      detail: `${stats.ordersCount} pedidos históricos`,
     },
     {
       icon: Shirt,
       label: 'Prendas publicadas',
-      value: String(published.length),
-      detail: `${products.length - published.length} pausadas`,
+      value: String(stats.publishedCount),
+      detail: `${stats.otherProductsCount} en otros estados`,
     },
     {
       icon: Users,
       label: 'Clientas registradas',
-      value: String(customers.length),
+      value: String(stats.customersCount),
       detail: 'En la base del atelier',
     },
   ];
@@ -105,7 +55,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Backoffice</p>
-          <h1 className="mt-2 font-display text-3xl text-charcoal">Dashboard del atelier</h1>
+          <h1 className="mt-2 font-display text-3xl text-charcoal">Hola, {admin.name}</h1>
           <p className="mt-2 text-sm text-stone-500">
             Panorama del taller: facturación, producción en curso y clientas.
           </p>
@@ -145,25 +95,31 @@ export default function AdminDashboardPage() {
               Ver todos
             </Link>
           </header>
-          <ul className="divide-y divide-line">
-            {recentOrders.map((order) => (
-              <li
-                key={order.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-6 py-4"
-              >
-                <div>
-                  <p className="text-sm text-charcoal">{order.code}</p>
-                  <p className="text-[11px] text-stone-400">
-                    {order.customerName} · {formatDate(order.createdAt)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <p className="text-sm text-charcoal">{formatCurrency(order.total)}</p>
-                  <StatusBadge status={order.status} />
-                </div>
-              </li>
-            ))}
-          </ul>
+          {stats.recentOrders.length === 0 ? (
+            <p className="px-6 py-10 text-center text-sm text-stone-400">
+              Todavía no hay pedidos. Cuando la boutique venda, los vas a ver acá.
+            </p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {stats.recentOrders.map((order) => (
+                <li
+                  key={order.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-6 py-4"
+                >
+                  <div>
+                    <p className="text-sm text-charcoal">{order.code}</p>
+                    <p className="text-[11px] text-stone-400">
+                      {order.clienta} · {formatDate(order.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm text-charcoal">{formatCents(order.totalCents)}</p>
+                    <AdminStatusBadge status={order.status as OrderStatus} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <div className="space-y-6">
@@ -173,22 +129,19 @@ export default function AdminDashboardPage() {
               <TrendingUp className="h-4 w-4 text-gold-dark" />
               <p className="text-xs uppercase tracking-[0.22em] text-charcoal">Más vendidas</p>
             </header>
-            {topProducts.length === 0 ? (
+            {stats.topProducts.length === 0 ? (
               <p className="px-6 py-6 text-sm text-stone-400">Todavía no hay ventas registradas.</p>
             ) : (
               <ul className="divide-y divide-line">
-                {topProducts.map((product) => (
-                  <li
-                    key={product.productId}
-                    className="flex items-center justify-between px-6 py-3.5"
-                  >
+                {stats.topProducts.map((product) => (
+                  <li key={product.id} className="flex items-center justify-between px-6 py-3.5">
                     <div>
                       <p className="text-sm text-charcoal">{product.name}</p>
                       <p className="text-[11px] text-stone-400">
                         {product.quantity} {product.quantity === 1 ? 'unidad' : 'unidades'}
                       </p>
                     </div>
-                    <p className="text-sm text-gold-dark">{formatCurrency(product.revenue)}</p>
+                    <p className="text-sm text-gold-dark">{formatCents(product.revenueCents)}</p>
                   </li>
                 ))}
               </ul>
@@ -201,22 +154,21 @@ export default function AdminDashboardPage() {
               <AlertTriangle className="h-4 w-4 text-gold-dark" />
               <p className="text-xs uppercase tracking-[0.22em] text-charcoal">Cupos críticos</p>
             </header>
-            {lowStock.length === 0 ? (
+            {stats.lowStock.length === 0 ? (
               <p className="px-6 py-6 text-sm text-stone-400">
                 Toda la colección tiene cupos de producción cómodos.
               </p>
             ) : (
               <ul className="divide-y divide-line">
-                {lowStock.map((product) => (
-                  <li
-                    key={product.id}
-                    className="flex items-center justify-between px-6 py-3.5"
-                  >
+                {stats.lowStock.map((product) => (
+                  <li key={product.id} className="flex items-center justify-between px-6 py-3.5">
                     <p className="text-sm text-charcoal">{product.name}</p>
                     <span
                       className={cn(
                         'rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.14em]',
-                        product.stock === 0 ? 'bg-red-100 text-red-700' : 'bg-gold/15 text-gold-dark',
+                        product.stock === 0
+                          ? 'bg-error-soft text-error'
+                          : 'bg-warn-soft text-warn',
                       )}
                     >
                       {product.stock === 0 ? 'Agotada' : `${product.stock} cupos`}
@@ -228,31 +180,6 @@ export default function AdminDashboardPage() {
           </section>
         </div>
       </div>
-
-      {/* Estados de taller de referencia */}
-      <section className="mt-8 border border-line bg-white p-6">
-        <p className="text-xs uppercase tracking-[0.22em] text-charcoal">
-          Flujo del taller de referencia
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          {(Object.keys(ORDER_STATUS_META) as OrderStatus[]).map((status) => (
-            <span
-              key={status}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px]',
-                ORDER_STATUS_META[status].badge,
-              )}
-            >
-              <span className={cn('h-1.5 w-1.5 rounded-full', ORDER_STATUS_META[status].dot)} />
-              {ORDER_STATUS_META[status].label}
-            </span>
-          ))}
-        </div>
-        <p className="mt-3 text-[11px] text-stone-400">
-          Actualizá el estado en la gestión de pedidos y la clienta lo ve al instante en “Mis
-          pedidos”.
-        </p>
-      </section>
     </div>
   );
 }

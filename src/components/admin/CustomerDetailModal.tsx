@@ -1,27 +1,42 @@
 'use client';
 
+import { useState, useTransition } from 'react';
 import { Ruler, Save, X } from 'lucide-react';
-import { useCustomersStore } from '@/store/customers-store';
-import { useOrdersStore, selectOrdersByEmail } from '@/store/orders-store';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
-import type { Customer } from '@/lib/types';
+import type { AdminCustomerView } from '@/server/admin/customers';
+import { updateCustomerContact } from '@/server/admin/actions';
+import { formatCents } from '@/lib/money';
+import { formatDate } from '@/lib/utils';
 
-interface CustomerDetailModalProps {
-  customerId: string;
+/**
+ * Ficha de clienta con datos REALES (Fase 3).
+ * Email y medidas: lectura (la clienta los gestiona desde su perfil).
+ * Teléfono: editable por la admin con server action.
+ */
+export function CustomerDetailModal({
+  customer,
+  onClose,
+}: {
+  customer: AdminCustomerView;
   onClose: () => void;
-}
+}) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [phone, setPhone] = useState(customer.phone ?? '');
 
-export function CustomerDetailModal({ customerId, onClose }: CustomerDetailModalProps) {
-  const customers = useCustomersStore((s) => s.customers);
-  const updateCustomer = useCustomersStore((s) => s.updateCustomer);
-  const orders = useOrdersStore((s) => s.orders);
-
-  const customer = customers.find((c) => c.id === customerId);
-  if (!customer) return null;
-
-  const customerOrders = selectOrdersByEmail(orders, customer.email);
-  const totalSpent = customerOrders.reduce((acc, o) => acc + o.total, 0);
+  function savePhone(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSaved(false);
+    start(async () => {
+      const result = await updateCustomerContact(customer.id, phone.trim());
+      if (!result.ok) setError(result.error);
+      else {
+        setSaved(true);
+        window.setTimeout(() => setSaved(false), 2500);
+      }
+    });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -36,7 +51,8 @@ export function CustomerDetailModal({ customerId, onClose }: CustomerDetailModal
             <div>
               <p className="font-display text-2xl text-charcoal">{customer.name}</p>
               <p className="text-[11px] uppercase tracking-[0.16em] text-stone-400">
-                Clienta desde {formatDate(customer.registeredAt)}
+                {customer.role === 'ADMIN' ? 'Administradora' : 'Clienta'} desde{' '}
+                {formatDate(customer.createdAt)}
               </p>
             </div>
           </div>
@@ -50,118 +66,80 @@ export function CustomerDetailModal({ customerId, onClose }: CustomerDetailModal
         </div>
 
         <div className="space-y-7 px-7 py-6">
-          {/* Datos y totales */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="border border-line bg-white p-5 text-sm">
               <p className="label">Contacto</p>
-              <p className="text-charcoal">{customer.email}</p>
-              <p className="text-stone-500">{customer.phone || 'Sin teléfono registrado'}</p>
-              <p className="mt-3 text-stone-500">{customer.city || '—'}</p>
+              {/* Email y medidas: la clienta los gestiona desde su perfil. */}
+              <p className="text-charcoal">{customer.email ?? 'Email no visible'}</p>
+              <p className="text-stone-500">{customer.city ?? '—'}</p>
+              <form onSubmit={savePhone} className="mt-4 flex gap-2">
+                <input
+                  aria-label="Teléfono de la clienta"
+                  className="field py-2"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+54 9 …"
+                />
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="flex items-center gap-1.5 border border-charcoal/25 px-4 text-[10px] uppercase tracking-[0.16em] text-charcoal transition-colors hover:border-gold hover:text-gold-dark disabled:opacity-40"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Guardar
+                </button>
+              </form>
+              {saved && (
+                <p role="status" className="mt-2 text-[11px] text-success">
+                  Teléfono actualizado.
+                </p>
+              )}
             </div>
+
             <div className="border border-line bg-white p-5 text-sm">
-              <p className="label">Actividad</p>
-              <div className="flex items-baseline justify-between">
-                <span className="text-stone-500">Pedidos</span>
-                <span className="text-charcoal">{customerOrders.length}</span>
-              </div>
-              <div className="mt-1 flex items-baseline justify-between">
-                <span className="text-stone-500">Total gastado</span>
-                <span className="text-base text-gold-dark">{formatCurrency(totalSpent)}</span>
-              </div>
+              <p className="label">Medidas registradas</p>
+              {customer.measurements ? (
+                <div className="flex items-center gap-2">
+                  <Ruler className="h-4 w-4 text-gold-dark" aria-hidden />
+                  <span className="text-charcoal">
+                    Busto {customer.measurements.busto} · Cintura {customer.measurements.cintura} ·
+                    Cadera {customer.measurements.cadera} · Largo {customer.measurements.largo} cm
+                  </span>
+                </div>
+              ) : (
+                <p className="text-stone-500">
+                  Sin medidas registradas. La clienta las carga desde su perfil.
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Medidas guardadas */}
-          <div className="border border-line bg-white p-5">
-            <p className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-charcoal">
-              <Ruler className="h-4 w-4 text-gold-dark" />
-              Medidas guardadas
+          {error && (
+            <p role="alert" className="border border-error-soft bg-error-soft px-4 py-2.5 text-xs text-error">
+              {error}
             </p>
-            {customer.savedMeasurements ? (
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  { label: 'Busto', value: customer.savedMeasurements.busto },
-                  { label: 'Cintura', value: customer.savedMeasurements.cintura },
-                  { label: 'Cadera', value: customer.savedMeasurements.cadera },
-                  { label: 'Largo', value: customer.savedMeasurements.largo },
-                ].map((m) => (
-                  <div key={m.label} className="border border-line p-3 text-center">
-                    <p className="font-display text-xl text-charcoal">{m.value}</p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-stone-400">
-                      {m.label} (cm)
-                    </p>
-                  </div>
-                ))}
+          )}
+
+          <div className="border border-line bg-white p-5 text-sm">
+            <p className="label">Historial comercial</p>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="font-display text-2xl text-charcoal">{customer.ordersCount}</p>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-stone-400">Pedidos</p>
               </div>
-            ) : (
-              <p className="mt-3 text-sm text-stone-400">
-                Sin medidas registradas todavía.
-              </p>
-            )}
-          </div>
-
-          {/* Notas del atelier (editables) */}
-          <div className="border border-line bg-white p-5">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const textarea = e.currentTarget.elements.namedItem('notes') as HTMLTextAreaElement;
-                updateCustomer(customer.id, { notes: textarea.value });
-                onClose();
-              }}
-            >
-              <label className="label" htmlFor="atelier-notes">
-                Notas del atelier (privadas)
-              </label>
-              <textarea
-                id="atelier-notes"
-                name="notes"
-                rows={3}
-                defaultValue={customer.notes ?? ''}
-                placeholder="Preferencias de calce, telas, alergias, referencias estéticas…"
-                className="field resize-none"
-              />
-              <button
-                type="submit"
-                className="mt-4 inline-flex items-center gap-2 bg-charcoal px-5 py-2.5 text-[11px] uppercase tracking-[0.2em] text-ivory transition-colors hover:bg-charcoal-soft"
-              >
-                <Save className="h-3.5 w-3.5" />
-                Guardar notas
-              </button>
-            </form>
-          </div>
-
-          {/* Historial de compras */}
-          <div>
-            <p className="label">Historial de compras</p>
-            {customerOrders.length === 0 ? (
-              <p className="border border-line bg-white px-5 py-8 text-center text-sm text-stone-400">
-                Esta clienta todavía no registró pedidos.
-              </p>
-            ) : (
-              <ul className="divide-y divide-line border border-line bg-white">
-                {[...customerOrders]
-                  .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                  .map((order) => (
-                    <li
-                      key={order.id}
-                      className={cn('flex flex-wrap items-center justify-between gap-3 px-5 py-4')}
-                    >
-                      <div>
-                        <p className="text-sm text-charcoal">{order.code}</p>
-                        <p className="text-[11px] text-stone-400">
-                          {formatDate(order.createdAt)} ·{' '}
-                          {order.items.reduce((acc, i) => acc + i.quantity, 0)} prenda(s)
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <p className="text-sm text-charcoal">{formatCurrency(order.total)}</p>
-                        <StatusBadge status={order.status} />
-                      </div>
-                    </li>
-                  ))}
-              </ul>
-            )}
+              <div>
+                <p className="font-display text-2xl text-charcoal">
+                  {formatCents(customer.totalSpentCents)}
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-stone-400">Facturado</p>
+              </div>
+              <div>
+                <p className="font-display text-2xl text-charcoal">
+                  {customer.lastOrderAt ? formatDate(customer.lastOrderAt) : '—'}
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-stone-400">Última compra</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,24 +1,35 @@
 'use client';
 
-import { ProductImage } from '@/components/ui/ProductImage';
+import { useState, useTransition } from 'react';
 import { X } from 'lucide-react';
-import { useOrdersStore } from '@/store/orders-store';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { ORDER_STATUS_META, ORDER_STATUS_ORDER, CUSTOM_SIZE } from '@/lib/constants';
-import { measurementsSummary } from '@/components/store/MeasurementsForm';
-import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
-import type { OrderStatus } from '@/lib/types';
+import type { AdminOrderView } from '@/server/admin/orders';
+import { updateOrderStatus } from '@/server/admin/actions';
+import { AdminStatusBadge } from '@/components/admin/AdminStatusBadge';
+import { ORDER_STATUS_LABEL, ORDER_TRANSITIONS } from '@/domain/state-machines';
+import { formatCents } from '@/lib/money';
+import { formatDateTime } from '@/lib/utils';
+import { ProductImage } from '@/components/ui/ProductImage';
+import type { OrderStatus } from '@prisma/client';
 
-interface OrderDetailModalProps {
-  orderId: string;
-  onClose: () => void;
-}
+/**
+ * Detalle de pedido con datos REALES (Fase 3).
+ * El cambio de estado lo valida la máquina de estados EN EL SERVIDOR
+ * (action) y queda en el historial auditable.
+ */
+export function OrderDetailModal({ order, onClose }: { order: AdminOrderView; onClose: () => void }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const current = order.status as OrderStatus;
+  const allowed = ORDER_TRANSITIONS[current] ?? [];
 
-export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
-  const orders = useOrdersStore((s) => s.orders);
-  const updateOrderStatus = useOrdersStore((s) => s.updateOrderStatus);
-  const order = orders.find((o) => o.id === orderId);
-  if (!order) return null;
+  function changeStatus(next: OrderStatus) {
+    setError(null);
+    start(async () => {
+      const result = await updateOrderStatus(order.id, next);
+      if (!result.ok) setError(result.error);
+      else onClose();
+    });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -42,41 +53,55 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
         </div>
 
         <div className="space-y-7 px-7 py-6">
-          {/* Estado + cambio en vivo */}
+          {/* Estado + transiciones legales */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="label">Estado actual</p>
-              <StatusBadge status={order.status} />
+              <AdminStatusBadge status={current} />
             </div>
             <div>
-              <label className="label" htmlFor="order-status-select">
-                Actualizar estado del taller
-              </label>
-              <select
-                id="order-status-select"
-                value={order.status}
-                onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                className="field"
-              >
-                {ORDER_STATUS_ORDER.map((status) => (
-                  <option key={status} value={status}>
-                    {ORDER_STATUS_META[status].label}
-                  </option>
-                ))}
-              </select>
+              <p className="label">Pasar a…</p>
+              {allowed.length === 0 ? (
+                <p className="text-xs text-stone-500">Estado final: no hay transiciones.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {allowed.map((next) => (
+                    <button
+                      key={next}
+                      onClick={() => changeStatus(next)}
+                      disabled={pending}
+                      className="border border-charcoal/25 bg-white px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-charcoal transition-colors hover:border-gold hover:text-gold-dark disabled:opacity-40"
+                    >
+                      {ORDER_STATUS_LABEL[next]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
+          {error && (
+            <p role="alert" className="border border-error-soft bg-error-soft px-4 py-2.5 text-xs text-error">
+              {error}
+            </p>
+          )}
 
           {/* Clienta y envío */}
           <div className="grid gap-4 border border-line bg-white p-5 text-sm sm:grid-cols-2">
             <div>
               <p className="label">Clienta</p>
-              <p className="text-charcoal">{order.customerName}</p>
-              <p className="text-stone-500">{order.customerEmail}</p>
+              <p className="text-charcoal">{order.shipName}</p>
+              <p className="text-stone-500">{order.email}</p>
+              <p className="text-stone-500">{order.shipPhone}</p>
             </div>
             <div>
               <p className="label">Envío</p>
-              <p className="text-charcoal">{order.shippingAddress}</p>
+              <p className="text-charcoal">
+                {order.shipStreet} · {order.shipCity}, {order.shipProvince}
+              </p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-stone-400">
+                {order.shippingStatus.replace(/_/g, ' ').toLowerCase()}
+              </p>
             </div>
             {order.workshopNotes && (
               <div className="sm:col-span-2">
@@ -88,35 +113,29 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
             )}
           </div>
 
-          {/* Prendas */}
+          {/* Prendas (snapshots inmutables) */}
           <div>
             <p className="label">Prendas del pedido</p>
             <ul className="divide-y divide-line border border-line bg-white">
-              {order.items.map((item, index) => (
-                <li key={`${order.id}-detail-${index}`} className="flex gap-4 p-4">
-                  <div className="relative h-24 w-18 shrink-0 overflow-hidden bg-line" style={{ width: 72 }}>
-                    <ProductImage src={item.image} alt={item.name} fallbackLabel={item.name} sizes="72px" className="object-cover" />
+              {order.items.map((item) => (
+                <li key={item.id} className="flex gap-4 p-4">
+                  <div className="relative h-24 w-[72px] shrink-0 overflow-hidden bg-line">
+                    <ProductImage
+                      src={item.image ?? ''}
+                      alt={item.name}
+                      fallbackLabel={item.name}
+                      sizes="72px"
+                      className="object-cover"
+                    />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-charcoal">{item.name}</p>
-                    {item.size === CUSTOM_SIZE ? (
-                      <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-gold-dark">
-                        Confección a medida
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-stone-500">
-                        Talle {item.size} · x{item.quantity}
-                      </p>
-                    )}
-                    {item.measurements && (
-                      <p className="mt-1 text-[11px] text-stone-500">
-                        Busto {item.measurements.busto} · Cintura {item.measurements.cintura} ·
-                        Cadera {item.measurements.cadera} · Largo {item.measurements.largo} cm
-                      </p>
-                    )}
+                    <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-stone-500">
+                      {item.madeToMeasure ? 'A medida' : `Talle ${item.size}`} · x{item.quantity}
+                    </p>
                   </div>
                   <p className="text-sm text-charcoal">
-                    {formatCurrency(item.price * item.quantity)}
+                    {formatCents(item.unitPriceCents * item.quantity)}
                   </p>
                 </li>
               ))}
@@ -124,32 +143,39 @@ export function OrderDetailModal({ orderId, onClose }: OrderDetailModalProps) {
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-stone-500">Subtotal</dt>
-                <dd className="text-charcoal">{formatCurrency(order.subtotal)}</dd>
+                <dd className="text-charcoal">{formatCents(order.subtotalCents)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-stone-500">Envío</dt>
                 <dd className="text-charcoal">
-                  {order.shipping === 0 ? 'Gratis' : formatCurrency(order.shipping)}
+                  {order.shippingCents === 0 ? 'Gratis' : formatCents(order.shippingCents)}
                 </dd>
               </div>
               <div className="flex justify-between border-t border-line pt-2 text-base">
                 <dt className="uppercase tracking-[0.16em] text-charcoal">Total</dt>
-                <dd className="font-medium text-charcoal">{formatCurrency(order.total)}</dd>
+                <dd className="font-medium text-charcoal">{formatCents(order.totalCents)}</dd>
               </div>
             </dl>
           </div>
 
-          {/* Historial */}
+          {/* Historial auditable */}
           <div>
             <p className="label">Historial del pedido</p>
             <ol className="space-y-2">
-              {[...order.history].reverse().map((entry, index) => (
-                <li key={`${order.id}-hist-${index}`} className="flex items-center gap-3 text-xs">
-                  <span className={cn('h-2 w-2 rounded-full', ORDER_STATUS_META[entry.status].dot)} />
-                  <span className="text-charcoal">{ORDER_STATUS_META[entry.status].label}</span>
+              {[...order.history].reverse().map((entry) => (
+                <li key={entry.id} className="flex flex-wrap items-center gap-2 text-xs">
+                  <span aria-hidden className="h-2 w-2 rounded-full bg-gold/60" />
+                  <span className="text-charcoal">
+                    {entry.from ? `${ORDER_STATUS_LABEL[entry.from as OrderStatus]} → ` : ''}
+                    {ORDER_STATUS_LABEL[entry.to as OrderStatus]}
+                  </span>
                   <span className="text-stone-400">{formatDateTime(entry.at)}</span>
+                  {entry.note && <span className="text-stone-400">· {entry.note}</span>}
                 </li>
               ))}
+              {order.history.length === 0 && (
+                <li className="text-xs text-stone-400">Sin cambios de estado registrados.</li>
+              )}
             </ol>
           </div>
         </div>

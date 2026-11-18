@@ -16,6 +16,16 @@ export const CATEGORY_LABEL: Record<DressCategory, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.value, c.label]),
 ) as Record<DressCategory, string>;
 
+/** Categorías por slug de la base (Fase 3: el panel habla con slugs). */
+export const CATEGORY_SLUGS: { slug: string; label: string }[] = [
+  { slug: 'novia', label: 'Novia' },
+  { slug: 'fiesta', label: 'Fiesta' },
+  { slug: 'coctel', label: 'Cóctel' },
+  { slug: 'gala', label: 'Gala' },
+  { slug: 'civil', label: 'Civil' },
+  { slug: 'quince', label: 'Quinceañera' },
+];
+
 export const FABRICS = [
   'Seda mikado',
   'Satén duchesse',
