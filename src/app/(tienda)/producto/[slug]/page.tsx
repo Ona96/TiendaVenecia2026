@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getPublishedProductBySlug } from '@/server/store/catalog';
 import { getMyLatestMeasurements } from '@/server/store/profile';
@@ -8,7 +9,27 @@ import { ProductDetailClient } from '@/components/store/ProductDetailClient';
 /**
  * Ficha de producto (Fase 4): Server Component que resuelve la prenda
  * por slug desde la base. PAUSADO/ARCHIVADO → 404 (no existe para la tienda).
+ * SEO: metadatos dinámicos + JSON-LD schema.org/Product.
  */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getPublishedProductBySlug(slug);
+  if (!product) return { title: 'Vestido no encontrado' };
+
+  return {
+    title: product.name,
+    description: product.description.slice(0, 160),
+    openGraph: {
+      title: product.name,
+      description: product.description.slice(0, 160),
+      type: 'website',
+    },
+  };
+}
 export default async function ProductoPage({
   params,
 }: {
@@ -39,5 +60,32 @@ export default async function ProductoPage({
     );
   }
 
-  return <ProductDetailClient product={product} savedMeasurements={savedMeasurements} />;
+  return (
+    <>
+      {/* Datos estructurados para buscadores (precio en ARS desde la base). */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            brand: { '@type': 'Brand', name: 'Venecia Alta Costura' },
+            offers: {
+              '@type': 'Offer',
+              price: product.price.toFixed(0),
+              priceCurrency: 'ARS',
+              availability:
+                product.stock > 0
+                  ? 'https://schema.org/InStock'
+                  : 'https://schema.org/OutOfStock',
+            },
+          }),
+        }}
+      />
+      <ProductDetailClient product={product} savedMeasurements={savedMeasurements} />
+    </>
+  );
 }

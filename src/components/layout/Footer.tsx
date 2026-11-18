@@ -58,10 +58,24 @@ export function Footer() {
           <div>
             <p className="eyebrow">Contacto</p>
             <ul className="mt-4 space-y-2.5 text-sm text-ivory/70">
-              <li>Palermo, Buenos Aires</li>
+              <li>Misiones, Argentina</li>
               <li>hola@venecia.com.ar</li>
-              <li>Lun a Vie · 10 a 19 h</li>
               <li>Turnos con cita previa</li>
+            </ul>
+            <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-ivory/40">
+              Legal
+            </p>
+            <ul className="mt-2 space-y-2 text-sm text-ivory/70">
+              <li>
+                <Link href="/terminos" className="transition-colors hover:text-gold">
+                  Términos y condiciones
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacidad" className="transition-colors hover:text-gold">
+                  Privacidad y datos
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
