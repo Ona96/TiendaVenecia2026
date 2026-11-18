@@ -166,6 +166,22 @@ model MeasurementVersion {
 
 // ---------------- Catálogo ----------------
 
+/// Catálogo de telas gestionado por la admin (Fase 7 del backlog).
+/// El nombre es único e inmutable tras crear: prendas y pedidos guardan
+/// el nombre como texto, así que renombrar rompería la referencia.
+model Fabric {
+  id          String   @id @default(cuid())
+  nombre      String   @unique
+  descripcion String?
+  isDemo      Boolean  @default(false)
+  /// Archivada: deja de ofrecerse, pero no se borra (integridad).
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("fabrics")
+}
+
 model Category {
   id        String   @id @default(cuid())
   slug      String   @unique

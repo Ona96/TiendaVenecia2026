@@ -44,6 +44,19 @@ const categories = [
   { slug: 'quince', name: 'Quinceañera', sortOrder: 6 },
 ];
 
+/// Telas del catálogo (demo, etiquetadas). La admin las gestiona en
+/// /admin/telas: nombre inmutable, descripción editable, archivo (no borrado).
+const fabrics = [
+  { nombre: 'Seda mikado', descripcion: 'Seda estructurada de cuerpo firme, ideal para moldeados limpios.' },
+  { nombre: 'Satén duchesse', descripcion: 'Brillo satenado con caída pesada y elegante.' },
+  { nombre: 'Encaje francés', descripcion: 'Encaje de Chantilly con flores bordadas a mano.' },
+  { nombre: 'Tul bordado', descripcion: 'Tul liviano con bordados dispersos: ideal para capas y mangas.' },
+  { nombre: 'Crepé de seda', descripcion: 'Crepé fluido de caída recta y mate.' },
+  { nombre: 'Gasa de seda', descripcion: 'Gasa etérea para capas y vuelos suaves.' },
+  { nombre: 'Chiffon', descripcion: 'Liviano y transparente, con movimiento al caminar.' },
+  { nombre: 'Brocado', descripcion: 'Tejido jacquard con motivos en relieve.' },
+];
+
 const collections = [
   {
     slug: 'ceremonia-2026',
@@ -166,6 +179,15 @@ async function main() {
       where: { slug: category.slug },
       update: { name: category.name, sortOrder: category.sortOrder, isDemo: DEMO },
       create: { ...category, isDemo: DEMO },
+    });
+  }
+
+  // Telas demo del catálogo (gestionables desde /admin/telas).
+  for (const fabric of fabrics) {
+    await prisma.fabric.upsert({
+      where: { nombre: fabric.nombre },
+      update: { descripcion: fabric.descripcion, isDemo: DEMO, archived: false },
+      create: { ...fabric, isDemo: DEMO },
     });
   }
 

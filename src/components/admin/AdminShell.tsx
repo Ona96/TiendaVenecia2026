@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ClipboardList,
+  Layers,
   LayoutDashboard,
   LogOut,
   Scissors,
@@ -20,6 +21,7 @@ const ADMIN_NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/pedidos', label: 'Pedidos', icon: ClipboardList, exact: false },
   { href: '/admin/prendas', label: 'Prendas', icon: Shirt, exact: false },
+  { href: '/admin/telas', label: 'Telas', icon: Layers, exact: false },
   { href: '/admin/presupuestos', label: 'Presupuestos', icon: Scissors, exact: false },
   { href: '/admin/clientes', label: 'Clientas', icon: Users, exact: false },
 ];

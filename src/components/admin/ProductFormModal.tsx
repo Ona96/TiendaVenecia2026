@@ -4,13 +4,15 @@ import { useState, useTransition } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import type { AdminProductView } from '@/server/admin/products';
 import { saveProduct, type ProductInput } from '@/server/admin/actions';
-import { CATEGORY_SLUGS, FABRICS, OCCASIONS, STANDARD_SIZES } from '@/lib/constants';
+import { CATEGORY_SLUGS, OCCASIONS, STANDARD_SIZES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { fromCents } from '@/lib/money';
 
 interface ProductFormModalProps {
   /** Prenda a editar, o null para crear una nueva. */
   product: AdminProductView | null;
+  /** Telas activas desde la base (gestión en /admin/telas). */
+  fabrics: { id: string; nombre: string; descripcion: string | null }[];
   onClose: () => void;
 }
 
@@ -23,7 +25,7 @@ function defaultImages(name: string): string[] {
  * Guarda con una server action: la validación y el dinero en centavos
  * se resuelven en el servidor, este formulario solo arma el payload.
  */
-export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
+export function ProductFormModal({ product, fabrics, onClose }: ProductFormModalProps) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -194,23 +196,30 @@ export function ProductFormModal({ product, onClose }: ProductFormModalProps) {
 
           <div>
             <p className="label">Telas</p>
-            <div className="flex flex-wrap gap-2">
-              {FABRICS.map((fabric) => (
-                <button
-                  key={fabric}
-                  type="button"
-                  onClick={() => toggleIn('fabrics', fabric)}
-                  className={cn(
-                    'border px-3 py-1.5 text-xs transition-colors',
-                    draft.fabrics.includes(fabric)
-                      ? 'border-gold bg-gold text-charcoal'
-                      : 'border-line bg-white hover:border-gold',
-                  )}
-                >
-                  {fabric}
-                </button>
-              ))}
-            </div>
+            {fabrics.length === 0 ? (
+              <p className="text-[11px] text-stone-400">
+                No hay telas activas: cargalas en «Telas» del panel.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {fabrics.map((fabric) => (
+                  <button
+                    key={fabric.id}
+                    type="button"
+                    title={fabric.descripcion ?? undefined}
+                    onClick={() => toggleIn('fabrics', fabric.nombre)}
+                    className={cn(
+                      'border px-3 py-1.5 text-xs transition-colors',
+                      draft.fabrics.includes(fabric.nombre)
+                        ? 'border-gold bg-gold text-charcoal'
+                        : 'border-line bg-white hover:border-gold',
+                    )}
+                  >
+                    {fabric.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

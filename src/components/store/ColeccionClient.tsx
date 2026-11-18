@@ -6,7 +6,6 @@ import { ProductCard } from '@/components/store/ProductCard';
 import { QuickViewModal } from '@/components/store/QuickViewModal';
 import {
   CATEGORIES,
-  FABRICS,
   OCCASIONS,
   STANDARD_SIZES,
 } from '@/lib/constants';
@@ -27,7 +26,14 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
  * catálogo publicado desde la base; acá solo se filtra/ordena en cliente
  * (filtros de facetas, sin datos sensibles).
  */
-export function ColeccionClient({ products }: { products: Product[] }) {
+export function ColeccionClient({
+  products,
+  fabricOptions,
+}: {
+  products: Product[];
+  /** Telas activas desde la base (faceta dinámica). */
+  fabricOptions: string[];
+}) {
   const published = products;
 
   const [categories, setCategories] = useState<DressCategory[]>([]);
@@ -159,7 +165,7 @@ export function ColeccionClient({ products }: { products: Product[] }) {
       <div>
         <p className="label">Tela</p>
         <ul className="space-y-2">
-          {FABRICS.map((fabric) => (
+          {fabricOptions.map((fabric) => (
             <li key={fabric}>
               <label className="flex cursor-pointer items-center gap-2.5 text-sm text-charcoal/80">
                 <input
@@ -172,6 +178,9 @@ export function ColeccionClient({ products }: { products: Product[] }) {
               </label>
             </li>
           ))}
+          {fabricOptions.length === 0 && (
+            <li className="text-[11px] text-stone-400">Sin telas cargadas todavía.</li>
+          )}
         </ul>
       </div>
 

@@ -365,6 +365,96 @@ export async function verifyDeposit(
 }
 
 // ------------------------------------------------------------
+// Catálogo de telas (Fase 7 — gestionable por la admin).
+// ------------------------------------------------------------
+
+const fabricSchema = z.object({
+  nombre: z
+    .string()
+    .trim()
+    .min(2, 'El nombre de la tela necesita al menos 2 caracteres.')
+    .max(60, 'Nombre demasiado largo.'),
+  descripcion: z.string().trim().max(300).optional(),
+});
+
+export async function createFabric(
+  input: z.infer<typeof fabricSchema>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertAdmin();
+
+    const parsed = fabricSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' };
+    }
+    const nombre = parsed.data.nombre;
+
+    const clash = await prisma.fabric.findFirst({
+      where: { nombre: { equals: nombre, mode: 'insensitive' } },
+    });
+    if (clash) return { ok: false, error: 'Ya existe una tela con ese nombre.' };
+
+    await prisma.fabric.create({
+      data: { nombre, descripcion: parsed.data.descripcion || null },
+    });
+
+    revalidatePath('/admin/telas');
+    revalidatePath('/coleccion');
+    return { ok: true };
+  } catch (err) {
+    console.error('[createFabric]', err);
+    return { ok: false, error: 'No pudimos crear la tela.' };
+  }
+}
+
+/** Solo la descripción: el nombre es inmutable (integridad de referencias). */
+export async function updateFabricDescription(
+  fabricId: string,
+  descripcion: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertAdmin();
+    const fabric = await prisma.fabric.findUnique({ where: { id: fabricId } });
+    if (!fabric) return { ok: false, error: 'La tela ya no existe.' };
+
+    await prisma.fabric.update({
+      where: { id: fabricId },
+      data: { descripcion: descripcion.trim() || null },
+    });
+
+    revalidatePath('/admin/telas');
+    return { ok: true };
+  } catch (err) {
+    console.error('[updateFabricDescription]', err);
+    return { ok: false, error: 'No pudimos guardar la descripción.' };
+  }
+}
+
+/** Archiva (nunca borra): deja de ofrecerse, prendas y pedidos intactos. */
+export async function setFabricArchived(
+  fabricId: string,
+  archived: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertAdmin();
+    const fabric = await prisma.fabric.findUnique({ where: { id: fabricId } });
+    if (!fabric) return { ok: false, error: 'La tela ya no existe.' };
+
+    // Desarchivar una tela en uso siempre es válido. Archivar una tela
+    // usada por prendas publicadas también: solo deja de ofrecerse en
+    // formularios nuevos y en el filtro de la colección.
+    await prisma.fabric.update({ where: { id: fabricId }, data: { archived } });
+
+    revalidatePath('/admin/telas');
+    revalidatePath('/coleccion');
+    return { ok: true };
+  } catch (err) {
+    console.error('[setFabricArchived]', err);
+    return { ok: false, error: 'No pudimos actualizar la tela.' };
+  }
+}
+
+// ------------------------------------------------------------
 // Envío manual (Fase 6): cotización y avance del envío.
 // ------------------------------------------------------------
 

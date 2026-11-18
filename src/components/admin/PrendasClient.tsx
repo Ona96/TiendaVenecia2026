@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Pencil, Play, Plus, Archive } from 'lucide-react';
 import type { AdminProductView } from '@/server/admin/products';
+import type { FabricView } from '@/server/admin/fabrics';
 import { setProductStatus, archiveProduct } from '@/server/admin/actions';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductFormModal } from '@/components/admin/ProductFormModal';
@@ -14,7 +15,13 @@ import { cn } from '@/lib/utils';
  * La autorización la hace cada action en el servidor; este componente
  * solo muestra y dispara.
  */
-export function PrendasClient({ products }: { products: AdminProductView[] }) {
+export function PrendasClient({
+  products,
+  fabrics,
+}: {
+  products: AdminProductView[];
+  fabrics: Pick<FabricView, 'id' | 'nombre' | 'descripcion'>[];
+}) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminProductView | null>(null);
   const [pendingArchive, setPendingArchive] = useState<AdminProductView | null>(null);
@@ -182,6 +189,7 @@ export function PrendasClient({ products }: { products: AdminProductView[] }) {
         <ProductFormModal
           key={editing?.id ?? 'nueva'}
           product={editing}
+          fabrics={fabrics}
           onClose={() => setFormOpen(false)}
         />
       )}

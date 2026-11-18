@@ -16,6 +16,7 @@ async function main() {
 
   const deleted = {
     promotions: await prisma.promotion.deleteMany({ where: { isDemo: true } }),
+    telasDemo: await prisma.fabric.deleteMany({ where: { isDemo: true } }),
     productos: await prisma.product.deleteMany({ where: { isDemo: true } }),
     colecciones: await prisma.collection.deleteMany({ where: { isDemo: true } }),
     categorias: await prisma.category.deleteMany({ where: { isDemo: true } }),
