@@ -1,8 +1,8 @@
 # PENDIENTES DE LA BOUTIQUE — todo lo que falta y depende de vos
 
-Última actualización: 18/11/2026 (fin de Fase 8 en lo que no depende de la
-boutique). El desarrollo está completo y verificado; lo que queda está
-ordenado por prioridad.
+Última actualización: 18/11/2026 (limpieza de la demo completa; resta
+MP/email/dominio/despliegue). El desarrollo está completo y verificado; lo
+que queda está ordenado por prioridad.
 
 ## 1. 📸 Fotos reales de las prendas (ME BLOQUEA EL LOOK FINAL)
 
@@ -26,10 +26,11 @@ también funciona — pero **en producción la única vía es el botón Subir**
 Ideal: vertical 3:4, buena luz, fondo limpio. Mientras no haya foto, la
 ficha muestra un panel elegante del atelier (nunca una foto rota).
 
-## 2. 🔐 Cambiar la contraseña del admin demo (URGENTE, 2 minutos)
+## 2. ✅ Acceso admin resuelto (18/11)
 
-Supabase → Authentication → Users → `admin@venecia.com` → Reset password.
-(La temporal es `VeneciaAdmin2026!`, creada por el desarrollo.)
+La cuenta demo `admin@venecia.com` se ELIMINÓ con la limpieza (ítem 8). La
+única cuenta del sistema es la real de la boutique: `kvnrenott@gmail.com`
+(registrada, email confirmado, rol ADMIN verificado). Sin acciones pendientes.
 
 ## 3. 📱 Mercado Pago (credenciales sandbox)
 
@@ -65,14 +66,20 @@ confirmar), redes sociales, y los textos de la home. Los cambio yo.
   (domicilio, email oficial, política de cambios/señas/cancelaciones,
   dirección del atelier) y aprobar. Están marcados como BORRADOR.
 
-## 8. 🧹 Limpieza de la demo (CUANDO el contenido real esté cargado)
+## 8. ✅ Limpieza de la demo (HECHO: 18/11, autorizado por la boutique)
 
-Pedís "borrá la demo" y ejecuto:
-- `npm run db:seed:clean` (prendas, telas, categorías, CMS demo de la base)
-- Vaciar los mocks del código (2 clientas/2 pedidos de prueba del storefront)
-- Borrar cuentas demo: `admin@venecia.com` y `valentina@demo.venecia`
-  (Authentication → Users de Supabase)
-- Confirmación previa contigo (es irreversible sobre datos de prueba).
+- `npm run db:seed:clean`: 24 filas demo eliminadas (2 prendas, 8 telas,
+  6 categorías, 3 colecciones, 1 promoción, 4 CMS; no había pedidos,
+  presupuestos ni pagos demo).
+- Mocks del código vaciados (`src/data/mock-data.ts`, seeds a []).
+- Cuentas demo borradas del auth: `admin@venecia.com` y
+  `valentina@demo.venecia` (`scripts/cleanup-demo.ts`, con guardas).
+  Única cuenta restante: `kvnrenott@gmail.com` (ADMIN).
+- Verificado: build de producción OK con catálogo vacío, tests de unidad
+  14/14, lint OK.
+- ⚠️ Los tests de integración (`npm run test:db`) esperaban la demo: desde
+  ahora exigen una base de DESARROLLO con seed (proyecto Supabase aparte).
+  No correrlos contra la base de producción.
 
 ## 9. 🚀 Despliegue (SOLO con tu autorización, según protocolo)
 

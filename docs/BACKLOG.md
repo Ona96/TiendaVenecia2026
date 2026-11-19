@@ -18,15 +18,17 @@ telas y contador de uso) ✓. Acciones con `assertAdmin` + Zod.
 tela, hay que migrar las referencias (products.fabrics String[]) en la
 misma transacción. Hoy el nombre es inmutable por integridad.
 
-## 2. ⏳ Borrado completo de la demo (pedido: 17/11 · pendiente al final)
+## 2. ✅ Borrado completo de la demo (pedido: 17/11 · HECHO: 18/11)
 
-La boutique pidió dejar 2 ejemplos por sección (hecho) y después borrarlos
-por completo. Aplicar cuando el contenido real esté cargado:
-- `npm run db:seed:clean` (base, incluye telas demo) + vaciar
-  `src/data/mock-data.ts` + cuentas demo (admin@venecia.com,
-  valentina@demo.venecia) desde Authentication → Users de Supabase.
-- Confirmar con la boutique antes de borrar (irreversible sobre datos de
-  prueba, no comerciales).
+**Estado: HECHO.** La boutique decidió usar el mismo proyecto Supabase para
+producción y autorizó el borrado. Ejecutado: `db:seed:clean` (24 filas
+isDemo), mocks vaciados en `src/data/mock-data.ts`, cuentas demo borradas
+con `scripts/cleanup-demo.ts` (admin@venecia.com y valentina@demo.venecia;
+guarda: aborta si la cuenta real no es ADMIN). Única cuenta:
+kvnrenott@gmail.com (ADMIN). Verificado: build de producción OK con
+catálogo vacío, tests de unidad 14/14, lint OK.
+Nota: los tests de integración requerían la demo en la base; para
+desarrollo futuro usar una base aparte con seed.
 
 ## 3. ⏳ Mercado Pago real (credenciales sandbox, pedido: 18/11)
 
